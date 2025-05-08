@@ -7,7 +7,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public class ProductServiceImpl implements ProductService {
@@ -15,28 +14,33 @@ public class ProductServiceImpl implements ProductService {
     @Autowired
     private ProductRepository productRepository;
 
+    // 1. Lấy tất cả sản phẩm
     @Override
     public List<Product> findAll() {
         return productRepository.findAll();
     }
 
+    // 2. Tìm sản phẩm theo ID
     @Override
-    public Optional<Product> findById(Integer id) {
-        return productRepository.findById(id);
+    public Product findById(Integer id) {
+        return productRepository.findById(id).orElse(null);
     }
 
+    // 3. Lưu sản phẩm mới
     @Override
     public Product save(Product product) {
         return productRepository.save(product);
     }
 
+    // 4. Xoá sản phẩm theo ID
     @Override
     public void deleteById(Integer id) {
         productRepository.deleteById(id);
     }
 
+    // 5. Cập nhật sản phẩm
     @Override
     public Product update(Product product) {
         return productRepository.save(product);
     }
-} 
+}
