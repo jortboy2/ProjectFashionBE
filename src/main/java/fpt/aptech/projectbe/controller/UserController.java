@@ -22,22 +22,12 @@ public class UserController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<User> getUserById(@PathVariable Integer id) {
-        return userService.findById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
-    }
-
-    @GetMapping("/username/{username}")
-    public ResponseEntity<User> getUserByUsername(@PathVariable String username) {
-        User user = userService.findByUsername(username);
-        return user != null ? ResponseEntity.ok(user) : ResponseEntity.notFound().build();
-    }
-
-    @GetMapping("/email/{email}")
-    public ResponseEntity<User> getUserByEmail(@PathVariable String email) {
-        User user = userService.findByEmail(email);
-        return user != null ? ResponseEntity.ok(user) : ResponseEntity.notFound().build();
+    public ResponseEntity<?> getUserById(@PathVariable Integer id) {
+        User user = userService.findById(id);
+        if (user == null) {
+            return ResponseEntity.badRequest().body("Không tìm thấy người dùng");
+        }
+        return ResponseEntity.ok(user);
     }
 
     @PostMapping
@@ -46,22 +36,20 @@ public class UserController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<User> updateUser(@PathVariable Integer id, @RequestBody User user) {
-        return userService.findById(id)
-                .map(existingUser -> {
-                    user.setId(id);
-                    return ResponseEntity.ok(userService.update(user));
-                })
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<?> updateUser(@PathVariable Integer id, @RequestBody User user) {
+        if (userService.findById(id) == null) {
+            return ResponseEntity.badRequest().body("Không tìm thấy người dùng để cập nhật");
+        }
+        user.setId(id);
+        return ResponseEntity.ok(userService.update(user));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteUser(@PathVariable Integer id) {
-        return userService.findById(id)
-                .map(user -> {
-                    userService.deleteById(id);
-                    return ResponseEntity.ok().<Void>build();
-                })
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<?> deleteUser(@PathVariable Integer id) {
+        if (userService.findById(id) == null) {
+            return ResponseEntity.badRequest().body("Không tìm thấy người dùng để xoá");
+        }
+        userService.deleteById(id);
+        return ResponseEntity.ok("Xoá người dùng thành công");
     }
-} 
+}

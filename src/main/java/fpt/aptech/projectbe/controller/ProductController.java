@@ -22,10 +22,12 @@ public class ProductController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Product> getProductById(@PathVariable Integer id) {
-        return productService.findById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<?> getProductById(@PathVariable Integer id) {
+        Product product = productService.findById(id);
+        if (product == null) {
+            return ResponseEntity.badRequest().body("Không tìm thấy sản phẩm");
+        }
+        return ResponseEntity.ok(product);
     }
 
     @PostMapping
@@ -34,22 +36,20 @@ public class ProductController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Product> updateProduct(@PathVariable Integer id, @RequestBody Product product) {
-        return productService.findById(id)
-                .map(existingProduct -> {
-                    product.setId(id);
-                    return ResponseEntity.ok(productService.update(product));
-                })
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<?> updateProduct(@PathVariable Integer id, @RequestBody Product product) {
+        if (productService.findById(id) == null) {
+            return ResponseEntity.badRequest().body("Không tìm thấy sản phẩm để cập nhật");
+        }
+        product.setId(id);
+        return ResponseEntity.ok(productService.update(product));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteProduct(@PathVariable Integer id) {
-        return productService.findById(id)
-                .map(product -> {
-                    productService.deleteById(id);
-                    return ResponseEntity.ok().<Void>build();
-                })
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<?> deleteProduct(@PathVariable Integer id) {
+        if (productService.findById(id) == null) {
+            return ResponseEntity.badRequest().body("Không tìm thấy sản phẩm để xoá");
+        }
+        productService.deleteById(id);
+        return ResponseEntity.ok("Xoá sản phẩm thành công");
     }
-} 
+}

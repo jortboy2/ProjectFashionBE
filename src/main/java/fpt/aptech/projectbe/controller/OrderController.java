@@ -27,17 +27,21 @@ public class OrderController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Order> getOrderById(@PathVariable Integer id) {
-        return orderService.findById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<?> getOrderById(@PathVariable Integer id) {
+        Order order = orderService.findById(id);
+        if (order == null) {
+            return ResponseEntity.badRequest().body("Không tìm thấy đơn hàng");
+        }
+        return ResponseEntity.ok(order);
     }
 
     @GetMapping("/user/{userId}")
-    public ResponseEntity<List<Order>> getOrdersByUser(@PathVariable Integer userId) {
-        return userService.findById(userId)
-                .map(user -> ResponseEntity.ok(orderService.findByUser(user)))
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<?> getOrdersByUser(@PathVariable Integer userId) {
+        User user = userService.findById(userId);
+        if (user == null) {
+            return ResponseEntity.badRequest().body("Người dùng không tồn tại");
+        }
+        return ResponseEntity.ok(orderService.findByUser(user));
     }
 
     @GetMapping("/status/{status}")
@@ -56,22 +60,20 @@ public class OrderController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Order> updateOrder(@PathVariable Integer id, @RequestBody Order order) {
-        return orderService.findById(id)
-                .map(existingOrder -> {
-                    order.setId(id);
-                    return ResponseEntity.ok(orderService.update(order));
-                })
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<?> updateOrder(@PathVariable Integer id, @RequestBody Order order) {
+        if (orderService.findById(id) == null) {
+            return ResponseEntity.badRequest().body("Không tìm thấy đơn hàng để cập nhật");
+        }
+        order.setId(id);
+        return ResponseEntity.ok(orderService.update(order));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteOrder(@PathVariable Integer id) {
-        return orderService.findById(id)
-                .map(order -> {
-                    orderService.deleteById(id);
-                    return ResponseEntity.ok().<Void>build();
-                })
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<?> deleteOrder(@PathVariable Integer id) {
+        if (orderService.findById(id) == null) {
+            return ResponseEntity.badRequest().body("Không tìm thấy đơn hàng để xoá");
+        }
+        orderService.deleteById(id);
+        return ResponseEntity.ok("Xoá đơn hàng thành công");
     }
-} 
+}
