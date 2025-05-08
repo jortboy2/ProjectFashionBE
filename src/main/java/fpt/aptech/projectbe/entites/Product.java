@@ -1,17 +1,19 @@
 package fpt.aptech.projectbe.entites;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
 
 import java.math.BigDecimal;
-
+import java.util.List;
 
 @Entity
 @Table(name = "products")
 public class Product {
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false)
     private Integer id;
 
@@ -28,6 +30,10 @@ public class Product {
     @ColumnDefault("0")
     @Column(name = "stock")
     private Integer stock;
+
+    @JsonManagedReference
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<ProductImage> productImages;
 
     public Integer getId() {
         return id;
@@ -67,6 +73,14 @@ public class Product {
 
     public void setStock(Integer stock) {
         this.stock = stock;
+    }
+
+    public List<ProductImage> getProductImages() {
+        return productImages;
+    }
+
+    public void setProductImages(List<ProductImage> productImages) {
+        this.productImages = productImages;
     }
 /*
  TODO [Reverse Engineering] create field to map the 'created_at' column
