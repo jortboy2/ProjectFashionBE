@@ -1,6 +1,8 @@
 package fpt.aptech.projectbe.service.impl;
 
+import fpt.aptech.projectbe.entites.Role;
 import fpt.aptech.projectbe.entites.User;
+import fpt.aptech.projectbe.repository.RoleRepository;
 import fpt.aptech.projectbe.repository.UserRepository;
 import fpt.aptech.projectbe.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,7 +16,8 @@ public class UserServiceImpl implements UserService {
 
     @Autowired
     private UserRepository userRepository;
-
+    @Autowired
+    private RoleRepository roleRepository;
     // 1. Lấy tất cả người dùng
     @Override
     public List<User> findAll() {
@@ -56,4 +59,15 @@ public class UserServiceImpl implements UserService {
     public User findByEmail(String email) {
         return userRepository.findByEmail(email);
     }
+
+    @Override
+    public User createUserWithDefaultRole(User user) {
+        Role defaultRole = roleRepository.findById(2)
+                .orElseThrow(() -> new RuntimeException("Default role not found"));
+
+        user.setRole(defaultRole);
+        return userRepository.save(user);
+    }
+
+
 }

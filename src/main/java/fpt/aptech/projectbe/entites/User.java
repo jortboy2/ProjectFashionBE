@@ -4,6 +4,9 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.ArrayList;
+import java.util.List;
+
 
 @Entity
 @Table(name = "users")
@@ -32,6 +35,17 @@ public class User {
     @Column(name = "phone", length = 20)
     private String phone;
 
+    @ManyToOne
+    @JoinColumn(name = "role_id")
+    private Role role;
+
+    public Role getRole() {
+        return role;
+    }
+
+    public void setRole(Role role) {
+        this.role = role;
+    }
     public Integer getId() {
         return id;
     }
@@ -87,10 +101,5 @@ public class User {
     public void setPhone(String phone) {
         this.phone = phone;
     }
-/*
- TODO [Reverse Engineering] create field to map the 'created_at' column
- Available actions: Define target Java type | Uncomment as is | Remove column mapping
-    @Column(name = "created_at", columnDefinition = "timestamp not null")
-    private Object createdAt;
-*/
+
 }

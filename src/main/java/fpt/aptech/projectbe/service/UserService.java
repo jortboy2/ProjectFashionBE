@@ -12,4 +12,7 @@ public interface UserService {
     User update(User user);
     User findByUsername(String username);
     User findByEmail(String email);
+    
+    // Thêm phương thức tạo user với role mặc định là 2
+    User createUserWithDefaultRole(User user);
 } 
