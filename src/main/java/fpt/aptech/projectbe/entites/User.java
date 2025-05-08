@@ -1,0 +1,95 @@
+package fpt.aptech.projectbe.entites;
+
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+
+
+@Entity
+@Table(name = "users")
+public class User {
+    @Id
+    @Column(name = "id", nullable = false)
+    private Integer id;
+
+    @Column(name = "username", nullable = false, length = 50)
+    private String username;
+
+    @Column(name = "password", nullable = false)
+    private String password;
+
+    @Column(name = "email", nullable = false, length = 100)
+    private String email;
+
+    @Column(name = "full_name", length = 100)
+    private String fullName;
+
+    @Lob
+    @Column(name = "address")
+    private String address;
+
+    @Column(name = "phone", length = 20)
+    private String phone;
+
+    public Integer getId() {
+        return id;
+    }
+
+    public void setId(Integer id) {
+        this.id = id;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public String getFullName() {
+        return fullName;
+    }
+
+    public void setFullName(String fullName) {
+        this.fullName = fullName;
+    }
+
+    public String getAddress() {
+        return address;
+    }
+
+    public void setAddress(String address) {
+        this.address = address;
+    }
+
+    public String getPhone() {
+        return phone;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
+    }
+/*
+ TODO [Reverse Engineering] create field to map the 'created_at' column
+ Available actions: Define target Java type | Uncomment as is | Remove column mapping
+    @Column(name = "created_at", columnDefinition = "timestamp not null")
+    private Object createdAt;
+*/
+}
