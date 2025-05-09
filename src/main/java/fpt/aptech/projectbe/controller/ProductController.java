@@ -1,7 +1,9 @@
 package fpt.aptech.projectbe.controller;
 
+import fpt.aptech.projectbe.entites.Category;
 import fpt.aptech.projectbe.entites.Product;
 import fpt.aptech.projectbe.entites.ProductImage;
+import fpt.aptech.projectbe.service.CategoryService;
 import fpt.aptech.projectbe.service.ProductService;
 import fpt.aptech.projectbe.service.ProductImageService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,7 +28,8 @@ public class ProductController {
 
     @Autowired
     private ProductService productService;
-
+    @Autowired
+    private CategoryService categoryService;
     @Autowired
     private ProductImageService productImageService;
 
@@ -65,6 +68,7 @@ public class ProductController {
             @RequestParam("description") String description,
             @RequestParam("price") String price,
             @RequestParam("stock") String stock,
+            @RequestParam("categoryId") Integer categoryId, // <-- Thêm dòng này
             @RequestParam(value = "images", required = false) List<MultipartFile> images) {
         try {
             // Tạo sản phẩm mới
@@ -74,12 +78,18 @@ public class ProductController {
             product.setPrice(new java.math.BigDecimal(price));
             product.setStock(Integer.parseInt(stock));
 
+            // Gán Category cho Product
+            Category category = categoryService.findById(categoryId);
+            if (category == null) {
+                return ResponseEntity.badRequest().body("Invalid categoryId: " + categoryId);
+            }
+            product.setCategory(category); // <-- Gán category cho product
+
             // Lưu sản phẩm trước
             Product savedProduct = productService.save(product);
 
-            // Xử lý upload hình ảnh nếu có
+            // Upload ảnh
             if (images != null && !images.isEmpty()) {
-                // Tạo thư mục nếu chưa tồn tại
                 Path uploadPath = Paths.get(UPLOAD_DIR);
                 if (!Files.exists(uploadPath)) {
                     Files.createDirectories(uploadPath);
@@ -88,17 +98,12 @@ public class ProductController {
                 List<ProductImage> productImages = new ArrayList<>();
                 for (MultipartFile file : images) {
                     if (!file.isEmpty()) {
-                        // Tạo tên file duy nhất
                         String fileName = UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
-                        
-                        // Lưu file
                         Path filePath = uploadPath.resolve(fileName);
                         Files.copy(file.getInputStream(), filePath);
 
-                        // Tạo URL để truy cập hình ảnh
                         String imageUrl = "/images/products/" + fileName;
 
-                        // Tạo ProductImage với Product đã được lưu
                         ProductImage productImage = new ProductImage();
                         productImage.setProduct(savedProduct);
                         productImage.setImageUrl(imageUrl);
@@ -106,18 +111,17 @@ public class ProductController {
                     }
                 }
 
-                // Lưu tất cả hình ảnh
                 if (!productImages.isEmpty()) {
                     productImageService.saveAll(productImages);
                 }
             }
 
-            // Lấy lại sản phẩm với hình ảnh
             return ResponseEntity.ok(productService.findById(savedProduct.getId()));
         } catch (IOException e) {
             return ResponseEntity.badRequest().body("Failed to create product: " + e.getMessage());
         }
     }
+
 
     @PutMapping("/{id}")
     public ResponseEntity<?> updateProduct(
