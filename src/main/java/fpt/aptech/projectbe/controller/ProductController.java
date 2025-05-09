@@ -39,14 +39,83 @@ public class ProductController {
     private final String UPLOAD_DIR = "src/main/resources/static/images/products/";
     private final String BASE_URL = "http://localhost:";
 
+    private void loadProductDetails(Product product) {
+        // Load images
+        List<ProductImage> images = productImageService.findByProduct(product);
+        product.setProductImages(images);
+        
+        // Load category
+        if (product.getCategory() != null && product.getCategory().getId() != null) {
+            Category category = categoryService.findById(product.getCategory().getId());
+            if (category != null) {
+                product.setCategory(category);
+            }
+        }
+    }
+
+    @GetMapping("/related/{productId}")
+    public ResponseEntity<?> getRelatedProducts(@PathVariable Integer productId) {
+        // Lấy sản phẩm hiện tại
+        Product currentProduct = productService.findById(productId);
+        if (currentProduct == null) {
+            return ResponseEntity.badRequest().body("Không tìm thấy sản phẩm");
+        }
+
+        // Kiểm tra category
+        if (currentProduct.getCategory() == null) {
+            return ResponseEntity.ok(new ArrayList<>()); // Trả về danh sách rỗng nếu không có category
+        }
+
+        // Lấy các sản phẩm liên quan
+        List<Product> relatedProducts = productService.findRelatedProducts(
+            currentProduct.getCategory().getId(), 
+            productId
+        );
+
+        // Load thông tin chi tiết cho từng sản phẩm
+        for (Product product : relatedProducts) {
+            loadProductDetails(product);
+        }
+
+        return ResponseEntity.ok(relatedProducts);
+    }
+
     @GetMapping
     public ResponseEntity<List<Product>> getAllProducts() {
         List<Product> products = productService.findAll();
-        // Lấy hình ảnh cho từng sản phẩm
+        // Lấy hình ảnh và category cho từng sản phẩm
+        for (Product product : products) {
+            // Lấy hình ảnh
+            List<ProductImage> images = productImageService.findByProduct(product);
+            product.setProductImages(images);
+            
+            // Lấy category
+            if (product.getCategory() != null) {
+                Category category = categoryService.findById(product.getCategory().getId());
+                product.setCategory(category);
+            }
+        }
+        return ResponseEntity.ok(products);
+    }
+
+    @GetMapping("/category/{categoryId}")
+    public ResponseEntity<?> getProductsByCategory(@PathVariable Integer categoryId) {
+        // Kiểm tra category có tồn tại không
+        Category category = categoryService.findById(categoryId);
+        if (category == null) {
+            return ResponseEntity.badRequest().body("Không tìm thấy danh mục");
+        }
+
+        // Lấy danh sách sản phẩm theo category
+        List<Product> products = productService.findByCategoryId(categoryId);
+        
+        // Lấy hình ảnh và category cho từng sản phẩm
         for (Product product : products) {
             List<ProductImage> images = productImageService.findByProduct(product);
             product.setProductImages(images);
+            product.setCategory(category);
         }
+        
         return ResponseEntity.ok(products);
     }
 
@@ -56,9 +125,16 @@ public class ProductController {
         if (product == null) {
             return ResponseEntity.badRequest().body("Không tìm thấy sản phẩm");
         }
-        // Lấy hình ảnh của sản phẩm
+        // Lấy hình ảnh và category của sản phẩm
         List<ProductImage> images = productImageService.findByProduct(product);
         product.setProductImages(images);
+        
+        // Lấy thông tin category
+        if (product.getCategory() != null) {
+            Category category = categoryService.findById(product.getCategory().getId());
+            product.setCategory(category);
+        }
+        
         return ResponseEntity.ok(product);
     }
 

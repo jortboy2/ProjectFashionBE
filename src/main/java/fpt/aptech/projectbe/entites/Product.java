@@ -1,5 +1,6 @@
 package fpt.aptech.projectbe.entites;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import org.hibernate.annotations.ColumnDefault;
@@ -27,18 +28,27 @@ public class Product {
     @Column(name = "price", nullable = false, precision = 10, scale = 2)
     private BigDecimal price;
 
-    @ColumnDefault("0")
-    @Column(name = "stock")
-    private Integer stock;
 
     @JsonManagedReference
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<ProductImage> productImages;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @OnDelete(action = OnDeleteAction.SET_NULL)
-
     @JoinColumn(name = "category_id")
     private Category category;
+
+    @JsonManagedReference
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<ProductSize> productSizes;
+
+    public List<ProductSize> getProductSizes() {
+        return productSizes;
+    }
+
+    public void setProductSizes(List<ProductSize> productSizes) {
+        this.productSizes = productSizes;
+    }
 
     public Category getCategory() {
         return category;

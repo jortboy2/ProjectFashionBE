@@ -10,4 +10,6 @@ public interface ProductService {
     Product save(Product product);
     void deleteById(Integer id);
     Product update(Product product);
+    List<Product> findByCategoryId(Integer categoryId);
+    List<Product> findRelatedProducts(Integer categoryId, Integer productId);
 } 
