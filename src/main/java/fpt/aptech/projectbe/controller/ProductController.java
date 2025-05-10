@@ -152,7 +152,6 @@ public class ProductController {
             product.setName(name);
             product.setDescription(description);
             product.setPrice(new java.math.BigDecimal(price));
-            product.setStock(Integer.parseInt(stock));
 
             // Gán Category cho Product
             Category category = categoryService.findById(categoryId);
@@ -218,7 +217,6 @@ public class ProductController {
             if (name != null) existingProduct.setName(name);
             if (description != null) existingProduct.setDescription(description);
             if (price != null) existingProduct.setPrice(new java.math.BigDecimal(price));
-            if (stock != null) existingProduct.setStock(Integer.parseInt(stock));
 
             // Lưu sản phẩm đã cập nhật
             Product updatedProduct = productService.update(existingProduct);

@@ -1,6 +1,7 @@
 package fpt.aptech.projectbe.entites;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import org.hibernate.annotations.ColumnDefault;
@@ -12,6 +13,8 @@ import java.util.List;
 
 @Entity
 @Table(name = "products")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+
 public class Product {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -41,7 +44,17 @@ public class Product {
     @JsonManagedReference
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<ProductSize> productSizes;
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "discount_id")
+    private Discount discount;
 
+    public Discount getDiscount() {
+        return discount;
+    }
+
+    public void setDiscount(Discount discount) {
+        this.discount = discount;
+    }
     public List<ProductSize> getProductSizes() {
         return productSizes;
     }
@@ -90,13 +103,7 @@ public class Product {
         this.price = price;
     }
 
-    public Integer getStock() {
-        return stock;
-    }
 
-    public void setStock(Integer stock) {
-        this.stock = stock;
-    }
 
     public List<ProductImage> getProductImages() {
         return productImages;
