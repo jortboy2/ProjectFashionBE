@@ -7,7 +7,7 @@ import java.util.Optional;
 
 public interface OrderService {
     List<Order> findAll();
-    Order findById(Integer id);
+    Optional<Order> findById(Integer id);
     Order save(Order order);
     void deleteById(Integer id);
     Order update(Order order);

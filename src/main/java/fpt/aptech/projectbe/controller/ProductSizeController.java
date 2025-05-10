@@ -14,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestController
@@ -32,6 +33,24 @@ public class ProductSizeController {
     @GetMapping("/product/{productId}")
     public ResponseEntity<List<ProductSizeDTO>> getProductSizes(@PathVariable Integer productId) {
         List<ProductSize> productSizes = productSizeService.findByProductId(productId);
+        List<ProductSizeDTO> dtos = productSizes.stream()
+                .map(ps -> new ProductSizeDTO(
+                        ps.getProduct().getId(),
+                        ps.getSize().getId(),
+                        ps.getSize().getName(),
+                        ps.getStock()))
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(dtos);
+    }
+
+    @GetMapping("/size/{sizeId}")
+    public ResponseEntity<List<ProductSizeDTO>> getProductsBySize(@PathVariable Integer sizeId) {
+        Size size = sizeService.findById(sizeId);
+        if (size == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        List<ProductSize> productSizes = productSizeService.findBySize(size);
         List<ProductSizeDTO> dtos = productSizes.stream()
                 .map(ps -> new ProductSizeDTO(
                         ps.getProduct().getId(),
@@ -88,6 +107,66 @@ public class ProductSizeController {
             @RequestParam Integer quantity) {
         productSizeService.updateStock(productId, sizeId, quantity);
         return ResponseEntity.ok().build();
+    }
+
+    @PutMapping("/product/{productId}/size/{sizeId}/add-stock")
+    public ResponseEntity<?> addStock(
+            @PathVariable Integer productId,
+            @PathVariable Integer sizeId,
+            @RequestParam Integer quantity) {
+        try {
+            ProductSize productSize = productSizeService.findByProductIdAndSizeId(productId, sizeId);
+            if (productSize == null) {
+                return ResponseEntity.notFound().build();
+            }
+
+            if (quantity <= 0) {
+                return ResponseEntity.badRequest()
+                    .body(Map.of("message", "Số lượng thêm vào phải lớn hơn 0"));
+            }
+
+            // Cập nhật số lượng mới = số lượng hiện tại + số lượng thêm vào
+            int newStock = productSize.getStock() + quantity;
+            productSizeService.updateStock(productId, sizeId, newStock);
+
+            return ResponseEntity.ok(Map.of(
+                "message", "Cập nhật số lượng thành công",
+                "oldStock", productSize.getStock(),
+                "addedQuantity", quantity,
+                "newStock", newStock
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                .body(Map.of("message", "Lỗi khi cập nhật số lượng: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/out-of-stock")
+    public ResponseEntity<List<ProductSizeDTO>> getOutOfStockProducts() {
+        List<ProductSize> allProductSizes = productSizeService.findAll();
+        List<ProductSizeDTO> outOfStockProducts = allProductSizes.stream()
+            .filter(ps -> ps.getStock() <= 0)
+            .map(ps -> new ProductSizeDTO(
+                ps.getProduct().getId(),
+                ps.getSize().getId(),
+                ps.getSize().getName(),
+                ps.getStock()))
+            .collect(Collectors.toList());
+        return ResponseEntity.ok(outOfStockProducts);
+    }
+
+    @GetMapping("/low-stock")
+    public ResponseEntity<List<ProductSizeDTO>> getLowStockProducts(@RequestParam(defaultValue = "5") Integer threshold) {
+        List<ProductSize> allProductSizes = productSizeService.findAll();
+        List<ProductSizeDTO> lowStockProducts = allProductSizes.stream()
+            .filter(ps -> ps.getStock() > 0 && ps.getStock() <= threshold)
+            .map(ps -> new ProductSizeDTO(
+                ps.getProduct().getId(),
+                ps.getSize().getId(),
+                ps.getSize().getName(),
+                ps.getStock()))
+            .collect(Collectors.toList());
+        return ResponseEntity.ok(lowStockProducts);
     }
 
     @DeleteMapping("/product/{productId}/size/{sizeId}")

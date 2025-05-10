@@ -32,13 +32,13 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     @Override
-    public void deleteById(Integer id) {
-        paymentRepository.deleteById(id);
+    public Payment update(Payment payment) {
+        return paymentRepository.save(payment);
     }
 
     @Override
-    public Payment update(Payment payment) {
-        return paymentRepository.save(payment);
+    public void deleteById(Integer id) {
+        paymentRepository.deleteById(id);
     }
 
     @Override
@@ -54,5 +54,10 @@ public class PaymentServiceImpl implements PaymentService {
     @Override
     public List<Payment> findByPaymentMethod(String paymentMethod) {
         return paymentRepository.findByPaymentMethod(paymentMethod);
+    }
+
+    @Override
+    public List<Payment> findByOrderId(Integer orderId) {
+        return paymentRepository.findByOrderId(orderId);
     }
 } 

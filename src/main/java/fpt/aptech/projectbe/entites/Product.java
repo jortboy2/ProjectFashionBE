@@ -90,13 +90,7 @@ public class Product {
         this.price = price;
     }
 
-    public Integer getStock() {
-        return stock;
-    }
 
-    public void setStock(Integer stock) {
-        this.stock = stock;
-    }
 
     public List<ProductImage> getProductImages() {
         return productImages;
