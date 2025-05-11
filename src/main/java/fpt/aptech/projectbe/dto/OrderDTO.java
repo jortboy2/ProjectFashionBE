@@ -12,13 +12,20 @@ public class OrderDTO {
     private String paymentStatus;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+
+    private String receiverName;
+    private String receiverEmail;
+    private String receiverPhone;
+    private String receiverAddress;
+
     private List<OrderItemDTO> orderItems;
 
-    public OrderDTO() {
-    }
+    public OrderDTO() {}
 
     public OrderDTO(Integer id, Integer userId, BigDecimal total, String status, String paymentStatus,
-                   LocalDateTime createdAt, LocalDateTime updatedAt, List<OrderItemDTO> orderItems) {
+                    LocalDateTime createdAt, LocalDateTime updatedAt,
+                    String receiverName, String receiverEmail, String receiverPhone, String receiverAddress,
+                    List<OrderItemDTO> orderItems) {
         this.id = id;
         this.userId = userId;
         this.total = total;
@@ -26,7 +33,43 @@ public class OrderDTO {
         this.paymentStatus = paymentStatus;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+        this.receiverName = receiverName;
+        this.receiverEmail = receiverEmail;
+        this.receiverPhone = receiverPhone;
+        this.receiverAddress = receiverAddress;
         this.orderItems = orderItems;
+    }
+
+    public String getReceiverName() {
+        return receiverName;
+    }
+
+    public void setReceiverName(String receiverName) {
+        this.receiverName = receiverName;
+    }
+
+    public String getReceiverEmail() {
+        return receiverEmail;
+    }
+
+    public void setReceiverEmail(String receiverEmail) {
+        this.receiverEmail = receiverEmail;
+    }
+
+    public String getReceiverPhone() {
+        return receiverPhone;
+    }
+
+    public void setReceiverPhone(String receiverPhone) {
+        this.receiverPhone = receiverPhone;
+    }
+
+    public String getReceiverAddress() {
+        return receiverAddress;
+    }
+
+    public void setReceiverAddress(String receiverAddress) {
+        this.receiverAddress = receiverAddress;
     }
 
     public Integer getId() {

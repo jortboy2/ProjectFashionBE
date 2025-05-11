@@ -79,12 +79,22 @@ public class OrderController {
     }
 
     @GetMapping("/user/{userId}")
-    public ResponseEntity<?> getOrdersByUser(@PathVariable Integer userId) {
-        User user = userService.findById(userId);
-        if (user == null) {
-            return ResponseEntity.badRequest().body("Không tìm thấy người dùng");
+    public ResponseEntity<List<OrderDTO>> getOrdersByUserId(@PathVariable Integer userId) {
+        try {
+            List<Order> orders = orderService.findByUserid(userId);
+            if (orders.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            }
+
+            List<OrderDTO> orderDTOs = orders.stream()
+                    .map(orderMapper::toDTO)
+                    .collect(Collectors.toList());
+
+            return ResponseEntity.ok(orderDTOs);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(null);
         }
-        return ResponseEntity.ok(orderService.findByUser(user));
     }
 
     @GetMapping("/status/{status}")
@@ -115,9 +125,12 @@ public class OrderController {
             Order order = new Order();
             order.setUser(user);
             order.setTotal(orderDTO.getTotal());
-            order.setStatus(orderDTO.getStatus() != null ? orderDTO.getStatus() : "pending");
-            order.setPaymentStatus(orderDTO.getPaymentStatus() != null ? orderDTO.getPaymentStatus() : "unpaid");
-
+            order.setStatus(orderDTO.getStatus());
+            order.setPaymentStatus(orderDTO.getPaymentStatus());
+            order.setReceiverName(orderDTO.getReceiverName());
+            order.setReceiverEmail(orderDTO.getReceiverEmail());
+            order.setReceiverPhone(orderDTO.getReceiverPhone());
+            order.setReceiverAddress(orderDTO.getReceiverAddress());
             // Save order first to get ID
             Order savedOrder = orderService.save(order);
 
@@ -262,7 +275,7 @@ public class OrderController {
             }
             
             // Cập nhật trạng thái đơn hàng
-            order.setStatus("confirmed");
+            order.setStatus("Thanh toán thành công");
             Order updatedOrder = orderService.update(order);
             
             // Tạo payment mới
@@ -270,7 +283,7 @@ public class OrderController {
             payment.setOrder(updatedOrder);
             payment.setAmount(updatedOrder.getTotal());
             payment.setPaymentMethod(paymentMethod);
-            payment.setStatus("pending");
+            payment.setStatus("Chưa thanh toán");
             
             // Lưu payment
             Payment savedPayment = paymentService.save(payment);

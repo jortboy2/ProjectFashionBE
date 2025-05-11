@@ -28,6 +28,11 @@ public class OrderMapper {
         dto.setCreatedAt(order.getCreatedAt());
         dto.setUpdatedAt(order.getUpdatedAt());
         
+        dto.setReceiverName(order.getReceiverName());
+        dto.setReceiverEmail(order.getReceiverEmail());
+        dto.setReceiverPhone(order.getReceiverPhone());
+        dto.setReceiverAddress(order.getReceiverAddress());
+        
         if (order.getOrderItems() != null) {
             List<OrderItemDTO> orderItemDTOs = order.getOrderItems().stream()
                 .map(this::toOrderItemDTO)

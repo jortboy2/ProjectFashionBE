@@ -29,11 +29,9 @@ public class Order {
     private BigDecimal total;
 
     @Column(name = "status", length = 50)
-    @ColumnDefault("'pending'")
     private String status;
 
     @Column(name = "payment_status", length = 50)
-    @ColumnDefault("'unpaid'")
     private String paymentStatus;
 
     @Column(name = "created_at")
@@ -41,7 +39,17 @@ public class Order {
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+    @Column(name = "receiver_name", nullable = false, length = 100)
+    private String receiverName;
 
+    @Column(name = "receiver_email", nullable = false, length = 100)
+    private String receiverEmail;
+
+    @Column(name = "receiver_phone", nullable = false, length = 20)
+    private String receiverPhone;
+
+    @Column(name = "receiver_address", nullable = false, length = 255)
+    private String receiverAddress;
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference
     private List<OrderItem> orderItems = new ArrayList<>();
@@ -62,6 +70,38 @@ public class Order {
         this.paymentStatus = paymentStatus;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+    }
+
+    public String getReceiverName() {
+        return receiverName;
+    }
+
+    public void setReceiverName(String receiverName) {
+        this.receiverName = receiverName;
+    }
+
+    public String getReceiverEmail() {
+        return receiverEmail;
+    }
+
+    public void setReceiverEmail(String receiverEmail) {
+        this.receiverEmail = receiverEmail;
+    }
+
+    public String getReceiverPhone() {
+        return receiverPhone;
+    }
+
+    public void setReceiverPhone(String receiverPhone) {
+        this.receiverPhone = receiverPhone;
+    }
+
+    public String getReceiverAddress() {
+        return receiverAddress;
+    }
+
+    public void setReceiverAddress(String receiverAddress) {
+        this.receiverAddress = receiverAddress;
     }
 
     @PrePersist

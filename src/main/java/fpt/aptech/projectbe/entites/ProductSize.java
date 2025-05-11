@@ -1,12 +1,15 @@
 package fpt.aptech.projectbe.entites;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
 @Entity
 @Table(name = "product_sizes")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+
 public class ProductSize {
     @EmbeddedId
     private ProductSizeId id;

@@ -57,14 +57,14 @@ public class UserController {
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody Map<String, String> loginRequest) {
-        String username = loginRequest.get("username");
+        String email = loginRequest.get("email");
         String password = loginRequest.get("password");
 
-        if (username == null || password == null) {
+        if (email == null || password == null) {
             return ResponseEntity.badRequest().body("Username và password không được để trống");
         }
 
-        User user = userService.findByUsername(username);
+        User user = userService.findByEmail(email);
         if (user == null) {
             return ResponseEntity.badRequest().body("Không tìm thấy người dùng");
         }

@@ -160,4 +160,9 @@ public class OrderServiceImpl implements OrderService {
     public List<Order> findByPaymentStatus(String paymentStatus) {
         return orderRepository.findByPaymentStatus(paymentStatus);
     }
+
+    @Override
+    public List<Order> findByUserid(int userid) {
+        return orderRepository.findByUserid(userid);
+    }
 }

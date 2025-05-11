@@ -14,4 +14,5 @@ public interface OrderService {
     List<Order> findByUser(User user);
     List<Order> findByStatus(String status);
     List<Order> findByPaymentStatus(String paymentStatus);
+    List<Order> findByUserid(int userid);
 } 
