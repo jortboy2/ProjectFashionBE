@@ -82,14 +82,14 @@ public class OrderController {
     public ResponseEntity<List<OrderDTO>> getOrdersByUserId(@PathVariable Integer userId) {
         try {
             List<Order> orders = orderService.findByUserid(userId);
-            if (orders.isEmpty()) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-            }
+
 
             List<OrderDTO> orderDTOs = orders.stream()
                     .map(orderMapper::toDTO)
                     .collect(Collectors.toList());
-
+            if (orders.isEmpty()) {
+                return ResponseEntity.ok(orderDTOs);
+            }
             return ResponseEntity.ok(orderDTOs);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
