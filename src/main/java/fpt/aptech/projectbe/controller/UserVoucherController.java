@@ -53,5 +53,9 @@ public class UserVoucherController {
         }
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Voucher không hợp lệ hoặc đã hết hạn.");
     }
+    @GetMapping("/user/{userId}")
+    public List<UserVoucher> findUserById(@PathVariable Integer userId) {
+        return userVouchersService.findAllByUserId(userId);
+    }
 
 }

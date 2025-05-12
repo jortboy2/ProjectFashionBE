@@ -25,9 +25,6 @@ public class User {
     @Column(name = "email", nullable = false, length = 100)
     private String email;
 
-    @Column(name = "full_name", length = 100)
-    private String fullName;
-
     @Lob
     @Column(name = "address")
     private String address;
@@ -76,14 +73,6 @@ public class User {
 
     public void setEmail(String email) {
         this.email = email;
-    }
-
-    public String getFullName() {
-        return fullName;
-    }
-
-    public void setFullName(String fullName) {
-        this.fullName = fullName;
     }
 
     public String getAddress() {

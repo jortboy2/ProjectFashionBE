@@ -13,5 +13,5 @@ public interface UserVouchersService {
     void deleteById(Integer id);
     UserVoucher update(UserVoucher user);
     UserVoucher useVoucherByUserId(Integer userId, String code);
-
+    List<UserVoucher> findAllByUserId(Integer userId);
 } 
