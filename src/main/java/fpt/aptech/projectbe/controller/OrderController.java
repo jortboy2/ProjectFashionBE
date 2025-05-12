@@ -19,6 +19,7 @@ import fpt.aptech.projectbe.service.ProductService;
 import fpt.aptech.projectbe.service.SizeService;
 import fpt.aptech.projectbe.service.PaymentService;
 import fpt.aptech.projectbe.service.ProductSizeService;
+import fpt.aptech.projectbe.service.VNPayService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -28,6 +29,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.Map;
+import java.util.HashMap;
 
 @RestController
 @RequestMapping("/api/orders")
@@ -60,6 +62,9 @@ public class OrderController {
 
     @Autowired
     private PaymentMapper paymentMapper;
+
+    @Autowired
+    private VNPayService vnPayService;
 
     private String generateOrderCode() {
         String characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -160,6 +165,7 @@ public class OrderController {
             order.setReceiverPhone(orderDTO.getReceiverPhone());
             order.setReceiverAddress(orderDTO.getReceiverAddress());
             order.setOrderCode(generateOrderCode());
+            
             // Save order first to get ID
             Order savedOrder = orderService.save(order);
 
@@ -204,6 +210,10 @@ public class OrderController {
 
                     // Save order item
                     orderItemService.save(orderItem);
+
+                    // Decrease product stock
+                    productSize.setStock(productSize.getStock() - itemDTO.getQuantity());
+                    productSizeService.save(productSize);
                 }
             }
 
@@ -239,13 +249,33 @@ public class OrderController {
             }
             
             Order order = orderOpt.get();
-            // Chỉ cho phép hủy đơn hàng ở trạng thái pending
+            
+            // Chỉ cho phép hủy đơn hàng ở trạng thái đang xử lý
             if (!"Đang xử lý".equals(order.getStatus())) {
-                return ResponseEntity.badRequest().body("Chỉ có thể hủy đơn hàng ở trạng thái pending");
+                return ResponseEntity.badRequest().body("Chỉ có thể hủy đơn hàng ở trạng thái đang xử lý");
+            }
+
+            // Lấy danh sách order items
+            List<OrderItem> orderItems = orderItemService.findByOrder(order);
+            
+            // Hoàn trả số lượng sản phẩm
+            for (OrderItem item : orderItems) {
+                ProductSize productSize = productSizeService.findByProductAndSize(item.getProduct(), item.getSize());
+                if (productSize != null) {
+                    // Tăng số lượng sản phẩm lên
+                    productSize.setStock(productSize.getStock() + item.getQuantity());
+                    productSizeService.save(productSize);
+                }
             }
             
-            order.setStatus("cancelled");
-            return ResponseEntity.ok(orderService.update(order));
+            // Cập nhật trạng thái đơn hàng thành đã hủy
+            order.setStatus("Đã hủy");
+            Order updatedOrder = orderService.update(order);
+            
+            return ResponseEntity.ok(Map.of(
+                "message", "Hủy đơn hàng thành công",
+                "order", orderMapper.toDTO(updatedOrder)
+            ));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Lỗi khi hủy đơn hàng: " + e.getMessage());
         }
@@ -277,9 +307,9 @@ public class OrderController {
             @RequestParam(value = "paymentMethod", required = true) String paymentMethod) {
         try {
             // Validate payment method
-            if (!"momo".equals(paymentMethod) && !"cash".equals(paymentMethod)) {
+            if (!"vnpay".equals(paymentMethod) && !"cash".equals(paymentMethod)) {
                 return ResponseEntity.badRequest()
-                    .body(Map.of("message", "Phương thức thanh toán không hợp lệ. Chỉ chấp nhận 'momo' hoặc 'cash'"));
+                    .body(Map.of("message", "Phương thức thanh toán không hợp lệ. Chỉ chấp nhận 'vnpay' hoặc 'cash'"));
             }
 
             Optional<Order> orderOpt = orderService.findById(id);
@@ -293,26 +323,7 @@ public class OrderController {
             // Kiểm tra trạng thái đơn hàng
             if (!"Đang xử lý".equals(order.getStatus())) {
                 return ResponseEntity.badRequest()
-                    .body(Map.of("message", "Chỉ có thể xác nhận đơn hàng ở trạng thái đang đợi xác nhận"));
-            }
-
-            // Kiểm tra và cập nhật số lượng sản phẩm
-            List<OrderItem> orderItems = orderItemService.findByOrder(order);
-            for (OrderItem item : orderItems) {
-                ProductSize productSize = productSizeService.findByProductAndSize(item.getProduct(), item.getSize());
-                if (productSize == null) {
-                    return ResponseEntity.badRequest()
-                        .body(Map.of("message", "Không tìm thấy thông tin số lượng sản phẩm " + item.getProduct().getName() + " size " + item.getSize().getName()));
-                }
-                
-                if (productSize.getStock() < item.getQuantity()) {
-                    return ResponseEntity.badRequest()
-                        .body(Map.of("message", "Sản phẩm " + item.getProduct().getName() + " size " + item.getSize().getName() + " không đủ số lượng trong kho"));
-                }
-                
-                // Giảm số lượng sản phẩm
-                productSize.setStock(productSize.getStock() - item.getQuantity());
-                productSizeService.save(productSize);
+                    .body(Map.of("message", "Chỉ có thể xác nhận đơn hàng ở trạng thái đang xử lý"));
             }
             
             // Cập nhật trạng thái đơn hàng
@@ -324,7 +335,7 @@ public class OrderController {
             payment.setOrder(updatedOrder);
             payment.setAmount(updatedOrder.getTotal());
             payment.setPaymentMethod(paymentMethod);
-            payment.setStatus(paymentMethod.equals("momo") ? "Đã thanh toán" : "Chưa thanh toán");
+            payment.setStatus(paymentMethod.equals("vnpay") ? "Đã thanh toán" : "Chưa thanh toán");
             
             // Lưu payment
             Payment savedPayment = paymentService.save(payment);
@@ -342,6 +353,44 @@ public class OrderController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(Map.of("message", "Lỗi khi xác nhận đơn hàng: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{orderId}/payment")
+    public ResponseEntity<?> processPayment(@PathVariable Integer orderId) {
+        try {
+            Optional<Order> orderOpt = orderService.findById(orderId);
+            if (orderOpt.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+
+            Order order = orderOpt.get();
+            String paymentUrl = vnPayService.createPaymentUrl(orderId.longValue(), order.getTotal().longValue());
+
+            Map<String, String> response = new HashMap<>();
+            response.put("paymentUrl", paymentUrl);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Error processing payment: " + e.getMessage());
+        }
+    }
+
+    @PutMapping("/{id}/status")
+    public ResponseEntity<?> updateOrderStatus(
+            @PathVariable Integer id,
+            @RequestParam String status) {
+        try {
+            Optional<Order> orderOpt = orderService.findById(id);
+            if (orderOpt.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+
+            Order order = orderOpt.get();
+            order.setStatus(status);
+            Order updatedOrder = orderService.update(order);
+            return ResponseEntity.ok(orderMapper.toDTO(updatedOrder));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Error updating order status: " + e.getMessage());
         }
     }
 }
