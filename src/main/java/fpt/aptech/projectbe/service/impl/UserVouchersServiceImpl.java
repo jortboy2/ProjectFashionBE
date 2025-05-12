@@ -88,5 +88,10 @@ public class UserVouchersServiceImpl implements UserVouchersService {
         return null;
     }
 
+    @Override
+    public List<UserVoucher> findAllByUserId(Integer userId) {
+        return userVoucherRepository.findByUserId(userId);
+    }
+
 
 }

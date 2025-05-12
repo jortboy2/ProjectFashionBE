@@ -39,12 +39,28 @@ public class UserController {
 
     @PutMapping("/{id}")
     public ResponseEntity<?> updateUser(@PathVariable Integer id, @RequestBody User user) {
-        if (userService.findById(id) == null) {
+        User existingUser = userService.findById(id);
+        if (existingUser == null) {
             return ResponseEntity.badRequest().body("Không tìm thấy người dùng để cập nhật");
         }
-        user.setId(id);
-        return ResponseEntity.ok(userService.update(user));
+
+        existingUser.setUsername(user.getUsername());
+        existingUser.setEmail(user.getEmail());
+        existingUser.setAddress(user.getAddress());
+        existingUser.setPhone(user.getPhone());
+
+        if (user.getPassword() != null && !user.getPassword().isEmpty()) {
+            existingUser.setPassword(user.getPassword()); // nên mã hóa nếu dùng bcrypt
+        }
+
+        if (user.getRole() != null) {
+            existingUser.setRole(user.getRole());
+        }
+
+        return ResponseEntity.ok(userService.update(existingUser));
     }
+
+
 
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteUser(@PathVariable Integer id) {
