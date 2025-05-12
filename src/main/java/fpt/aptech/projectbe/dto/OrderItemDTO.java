@@ -9,6 +9,24 @@ public class OrderItemDTO {
     private Integer sizeId;
     private Integer quantity;
     private BigDecimal price;
+    private ProductDTO product;
+    private SizeDTO size;
+
+    public ProductDTO getProduct() {
+        return product;
+    }
+
+    public void setProduct(ProductDTO product) {
+        this.product = product;
+    }
+
+    public SizeDTO getSize() {
+        return size;
+    }
+
+    public void setSize(SizeDTO size) {
+        this.size = size;
+    }
 
     public OrderItemDTO() {
     }

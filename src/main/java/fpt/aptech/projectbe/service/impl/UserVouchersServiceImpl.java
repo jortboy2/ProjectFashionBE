@@ -1,6 +1,9 @@
 package fpt.aptech.projectbe.service.impl;
 
+import fpt.aptech.projectbe.dto.UserVoucherDTO;
+import fpt.aptech.projectbe.entites.User;
 import fpt.aptech.projectbe.entites.UserVoucher;
+import fpt.aptech.projectbe.repository.UserRepository;
 import fpt.aptech.projectbe.repository.UserVouchersRepository;
 import fpt.aptech.projectbe.repository.UserVouchersRepository;
 import fpt.aptech.projectbe.service.UserVouchersService;
@@ -16,6 +19,8 @@ public class UserVouchersServiceImpl implements UserVouchersService {
 
     @Autowired
     private UserVouchersRepository userVoucherRepository;
+    @Autowired
+    private UserRepository userRepository;
 
     @Override
     public List<UserVoucher> findAll() {
@@ -28,9 +33,22 @@ public class UserVouchersServiceImpl implements UserVouchersService {
     }
 
     @Override
-    public UserVoucher save(UserVoucher userVoucher) {
-        return userVoucherRepository.save(userVoucher);
+    public UserVoucher save(UserVoucherDTO dto) {
+        User user = userRepository.findById(dto.getUserId())
+                .orElseThrow(() -> new RuntimeException("User không tồn tại"));
+
+        UserVoucher voucher = new UserVoucher();
+        voucher.setCode(dto.getCode());
+        voucher.setDiscountType(dto.getDiscountType());
+        voucher.setDiscountValue(dto.getDiscountValue());
+        voucher.setStartDate(dto.getStartDate());
+        voucher.setEndDate(dto.getEndDate());
+        voucher.setUsed(dto.getUsed());
+        voucher.setUser(user);
+
+        return userVoucherRepository.save(voucher);
     }
+
 
     @Override
     public void deleteById(Integer id) {

@@ -1,6 +1,7 @@
 package fpt.aptech.projectbe.controller;
 
 
+import fpt.aptech.projectbe.dto.UserVoucherDTO;
 import fpt.aptech.projectbe.entites.UserVoucher;
 import fpt.aptech.projectbe.service.UserVouchersService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,8 +30,9 @@ public class UserVoucherController {
     }
 
     @PostMapping
-    public UserVoucher create(@RequestBody UserVoucher userVoucher) {
-        return userVouchersService.save(userVoucher);
+    public ResponseEntity<UserVoucher> create(@RequestBody UserVoucherDTO userVoucherDTO) {
+        UserVoucher saved = userVouchersService.save(userVoucherDTO);
+        return ResponseEntity.ok(saved);
     }
 
     @PutMapping("/{id}")
