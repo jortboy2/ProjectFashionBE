@@ -50,6 +50,10 @@ public class Order {
 
     @Column(name = "receiver_address", nullable = false, length = 255)
     private String receiverAddress;
+
+    @Column(name = "order_code", nullable = false, length = 50)
+    private String orderCode;
+
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference
     private List<OrderItem> orderItems = new ArrayList<>();
@@ -62,7 +66,7 @@ public class Order {
     }
 
     public Order(Integer id, User user, BigDecimal total, String status, String paymentStatus, 
-                LocalDateTime createdAt, LocalDateTime updatedAt) {
+                LocalDateTime createdAt, LocalDateTime updatedAt, String orderCode) {
         this.id = id;
         this.user = user;
         this.total = total;
@@ -70,6 +74,15 @@ public class Order {
         this.paymentStatus = paymentStatus;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+        this.orderCode = orderCode;
+    }
+
+    public String getOrderCode() {
+        return orderCode;
+    }
+
+    public void setOrderCode(String orderCode) {
+        this.orderCode = orderCode;
     }
 
     public String getReceiverName() {

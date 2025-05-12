@@ -61,6 +61,19 @@ public class OrderController {
     @Autowired
     private PaymentMapper paymentMapper;
 
+    private String generateOrderCode() {
+        String characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        StringBuilder code = new StringBuilder();
+        java.util.Random random = new java.util.Random();
+        
+        for (int i = 0; i < 6; i++) {
+            int index = random.nextInt(characters.length());
+            code.append(characters.charAt(index));
+        }
+        
+        return code.toString();
+    }
+
     @GetMapping
     public ResponseEntity<List<OrderDTO>> getAllOrders() {
         List<Order> orders = orderService.findAll();
@@ -107,6 +120,21 @@ public class OrderController {
         return ResponseEntity.ok(orderService.findByPaymentStatus(paymentStatus));
     }
 
+    @GetMapping("/code/{orderCode}")
+    public ResponseEntity<?> getOrderByOrderCode(@PathVariable String orderCode) {
+        try {
+            Optional<Order> orderOpt = orderService.findByOrderCode(orderCode);
+            if (orderOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("message", "Không tìm thấy đơn hàng với mã: " + orderCode));
+            }
+            return ResponseEntity.ok(orderMapper.toDTO(orderOpt.get()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("message", "Lỗi khi tìm kiếm đơn hàng: " + e.getMessage()));
+        }
+    }
+
     @PostMapping
     public ResponseEntity<?> createOrder(@RequestBody OrderDTO orderDTO) {
         try {
@@ -125,12 +153,13 @@ public class OrderController {
             Order order = new Order();
             order.setUser(user);
             order.setTotal(orderDTO.getTotal());
-            order.setStatus(orderDTO.getStatus());
-            order.setPaymentStatus(orderDTO.getPaymentStatus());
+            order.setStatus("Đang xử lý");
+            order.setPaymentStatus(orderDTO.getPaymentStatus() != null ? orderDTO.getPaymentStatus() : "Chưa thanh toán");
             order.setReceiverName(orderDTO.getReceiverName());
             order.setReceiverEmail(orderDTO.getReceiverEmail());
             order.setReceiverPhone(orderDTO.getReceiverPhone());
             order.setReceiverAddress(orderDTO.getReceiverAddress());
+            order.setOrderCode(generateOrderCode());
             // Save order first to get ID
             Order savedOrder = orderService.save(order);
 
@@ -151,6 +180,18 @@ public class OrderController {
                     }
                     if (size == null) {
                         return ResponseEntity.badRequest().body("Size not found with ID: " + itemDTO.getSizeId());
+                    }
+
+                    // Check product size stock
+                    ProductSize productSize = productSizeService.findByProductAndSize(product, size);
+                    if (productSize == null) {
+                        return ResponseEntity.badRequest().body("Product size combination not found for product: " + product.getName() + " and size: " + size.getName());
+                    }
+                    
+                    if (productSize.getStock() < itemDTO.getQuantity()) {
+                        return ResponseEntity.badRequest().body("Insufficient stock for product: " + product.getName() + 
+                            " size: " + size.getName() + ". Available: " + productSize.getStock() + 
+                            ", Requested: " + itemDTO.getQuantity());
                     }
 
                     // Create order item
@@ -199,7 +240,7 @@ public class OrderController {
             
             Order order = orderOpt.get();
             // Chỉ cho phép hủy đơn hàng ở trạng thái pending
-            if (!"pending".equals(order.getStatus())) {
+            if (!"Đang xử lý".equals(order.getStatus())) {
                 return ResponseEntity.badRequest().body("Chỉ có thể hủy đơn hàng ở trạng thái pending");
             }
             
@@ -250,7 +291,7 @@ public class OrderController {
             Order order = orderOpt.get();
             
             // Kiểm tra trạng thái đơn hàng
-            if (!"pending".equals(order.getStatus())) {
+            if (!"Đang xử lý".equals(order.getStatus())) {
                 return ResponseEntity.badRequest()
                     .body(Map.of("message", "Chỉ có thể xác nhận đơn hàng ở trạng thái đang đợi xác nhận"));
             }
@@ -275,7 +316,7 @@ public class OrderController {
             }
             
             // Cập nhật trạng thái đơn hàng
-            order.setStatus("Thanh toán thành công");
+            order.setStatus("Xác nhận");
             Order updatedOrder = orderService.update(order);
             
             // Tạo payment mới
@@ -283,7 +324,7 @@ public class OrderController {
             payment.setOrder(updatedOrder);
             payment.setAmount(updatedOrder.getTotal());
             payment.setPaymentMethod(paymentMethod);
-            payment.setStatus("Chưa thanh toán");
+            payment.setStatus(paymentMethod.equals("momo") ? "Đã thanh toán" : "Chưa thanh toán");
             
             // Lưu payment
             Payment savedPayment = paymentService.save(payment);

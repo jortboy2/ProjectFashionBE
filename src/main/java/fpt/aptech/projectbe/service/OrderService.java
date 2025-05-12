@@ -15,4 +15,5 @@ public interface OrderService {
     List<Order> findByStatus(String status);
     List<Order> findByPaymentStatus(String paymentStatus);
     List<Order> findByUserid(int userid);
+    Optional<Order> findByOrderCode(String orderCode);
 } 
