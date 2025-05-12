@@ -6,7 +6,7 @@ import jakarta.persistence.*;
 import org.hibernate.annotations.ColumnDefault;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.sql.Timestamp;
 
 @Entity
 @Table(name = "payments")
@@ -27,8 +27,8 @@ public class Payment {
     @Column(name = "payment_method", length = 50)
     private String paymentMethod;
 
-    @Column(name = "payment_date")
-    private LocalDateTime paymentDate;
+    @Column(name = "payment_date", insertable = false, updatable = false)
+    private Timestamp paymentDate;
 
     @Column(name = "status", length = 50)
     @ColumnDefault("'completed'")
@@ -37,18 +37,13 @@ public class Payment {
     public Payment() {
     }
 
-    public Payment(Integer id, Order order, BigDecimal amount, String paymentMethod, LocalDateTime paymentDate, String status) {
+    public Payment(Integer id, Order order, BigDecimal amount, String paymentMethod, Timestamp paymentDate, String status) {
         this.id = id;
         this.order = order;
         this.amount = amount;
         this.paymentMethod = paymentMethod;
         this.paymentDate = paymentDate;
         this.status = status;
-    }
-
-    @PrePersist
-    protected void onCreate() {
-        paymentDate = LocalDateTime.now();
     }
 
     public Integer getId() {
@@ -83,11 +78,11 @@ public class Payment {
         this.paymentMethod = paymentMethod;
     }
 
-    public LocalDateTime getPaymentDate() {
+    public Timestamp getPaymentDate() {
         return paymentDate;
     }
 
-    public void setPaymentDate(LocalDateTime paymentDate) {
+    public void setPaymentDate(Timestamp paymentDate) {
         this.paymentDate = paymentDate;
     }
 

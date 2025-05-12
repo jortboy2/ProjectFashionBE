@@ -7,6 +7,7 @@ import fpt.aptech.projectbe.entites.Order;
 import fpt.aptech.projectbe.entites.OrderItem;
 import fpt.aptech.projectbe.entites.Payment;
 import org.springframework.stereotype.Component;
+import java.sql.Timestamp;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -32,6 +33,7 @@ public class OrderMapper {
         dto.setReceiverEmail(order.getReceiverEmail());
         dto.setReceiverPhone(order.getReceiverPhone());
         dto.setReceiverAddress(order.getReceiverAddress());
+        dto.setOrderCode(order.getOrderCode());
         
         if (order.getOrderItems() != null) {
             List<OrderItemDTO> orderItemDTOs = order.getOrderItems().stream()
@@ -69,7 +71,7 @@ public class OrderMapper {
         dto.setOrderId(payment.getOrder().getId());
         dto.setAmount(payment.getAmount());
         dto.setPaymentMethod(payment.getPaymentMethod());
-        dto.setPaymentDate(payment.getPaymentDate());
+        dto.setPaymentDate(payment.getPaymentDate() != null ? payment.getPaymentDate().toLocalDateTime() : null);
         dto.setStatus(payment.getStatus());
 
         return dto;

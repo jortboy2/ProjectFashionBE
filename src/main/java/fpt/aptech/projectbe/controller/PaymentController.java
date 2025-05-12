@@ -7,10 +7,13 @@ import fpt.aptech.projectbe.mapper.OrderMapper;
 import fpt.aptech.projectbe.service.OrderService;
 import fpt.aptech.projectbe.service.PaymentService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @RestController
@@ -96,6 +99,31 @@ public class PaymentController {
                 return ResponseEntity.ok(orderMapper.toPaymentDTO(updatedPayment));
             })
             .orElse(ResponseEntity.badRequest().build());
+    }
+
+    @PutMapping("/{id}/complete")
+    public ResponseEntity<?> completePayment(@PathVariable Integer id) {
+        try {
+            Optional<Payment> paymentOpt = paymentService.findById(id);
+            if (paymentOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("message", "Không tìm thấy payment với ID: " + id));
+            }
+            
+            Payment payment = paymentOpt.get();
+            payment.setStatus("Đã thanh toán");
+            
+            // Update order payment status
+            Order order = payment.getOrder();
+            order.setPaymentStatus("Đã thanh toán");
+            orderService.update(order);
+            
+            Payment updatedPayment = paymentService.update(payment);
+            return ResponseEntity.ok(orderMapper.toPaymentDTO(updatedPayment));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("message", "Lỗi khi cập nhật trạng thái thanh toán: " + e.getMessage()));
+        }
     }
 
     @DeleteMapping("/{id}")

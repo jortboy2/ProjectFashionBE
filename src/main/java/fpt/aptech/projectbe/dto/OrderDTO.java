@@ -19,13 +19,15 @@ public class OrderDTO {
     private String receiverAddress;
 
     private List<OrderItemDTO> orderItems;
+    
+    private String orderCode;
 
     public OrderDTO() {}
 
     public OrderDTO(Integer id, Integer userId, BigDecimal total, String status, String paymentStatus,
                     LocalDateTime createdAt, LocalDateTime updatedAt,
                     String receiverName, String receiverEmail, String receiverPhone, String receiverAddress,
-                    List<OrderItemDTO> orderItems) {
+                    List<OrderItemDTO> orderItems, String orderCode) {
         this.id = id;
         this.userId = userId;
         this.total = total;
@@ -38,6 +40,7 @@ public class OrderDTO {
         this.receiverPhone = receiverPhone;
         this.receiverAddress = receiverAddress;
         this.orderItems = orderItems;
+        this.orderCode = orderCode;
     }
 
     public String getReceiverName() {
@@ -134,5 +137,13 @@ public class OrderDTO {
 
     public void setOrderItems(List<OrderItemDTO> orderItems) {
         this.orderItems = orderItems;
+    }
+
+    public String getOrderCode() {
+        return orderCode;
+    }
+
+    public void setOrderCode(String orderCode) {
+        this.orderCode = orderCode;
     }
 } 
