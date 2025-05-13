@@ -37,6 +37,16 @@ public class UserVouchersServiceImpl implements UserVouchersService {
         User user = userRepository.findById(dto.getUserId())
                 .orElseThrow(() -> new RuntimeException("User không tồn tại"));
 
+        // Tìm xem đã có voucher với code và user này chưa
+        Optional<UserVoucher> existingVoucherOpt = userVoucherRepository.findByCodeAndUser(dto.getCode(), user);
+
+        if (existingVoucherOpt.isPresent()) {
+            UserVoucher existingVoucher = existingVoucherOpt.get();
+            existingVoucher.setCountCode(existingVoucher.getCountCode() + 1); // tăng count
+            return userVoucherRepository.save(existingVoucher);
+        }
+
+        // Nếu chưa có, tạo mới
         UserVoucher voucher = new UserVoucher();
         voucher.setCode(dto.getCode());
         voucher.setDiscountType(dto.getDiscountType());
@@ -45,9 +55,11 @@ public class UserVouchersServiceImpl implements UserVouchersService {
         voucher.setEndDate(dto.getEndDate());
         voucher.setUsed(dto.getUsed());
         voucher.setUser(user);
+        voucher.setCountCode(1); // khởi tạo count = 1
 
         return userVoucherRepository.save(voucher);
     }
+
 
 
     @Override
@@ -91,6 +103,21 @@ public class UserVouchersServiceImpl implements UserVouchersService {
     @Override
     public List<UserVoucher> findAllByUserId(Integer userId) {
         return userVoucherRepository.findByUserId(userId);
+    }
+
+    @Override
+    public UserVoucher setCountVoucherByUserId(Integer userId, String code) {
+        UserVoucher voucher = userVoucherRepository.findByUserIdAndCodeAndUsedFalse(userId, code)
+                .orElseThrow(() -> new RuntimeException("Voucher not found or already used"));
+        voucher.setCountCode(voucher.getCountCode() - 1);
+
+        // Nếu sau khi trừ count = 0 thì set used = true (tùy logic của bạn)
+        if (voucher.getCountCode() == 0) {
+            userVoucherRepository.deleteById(voucher.getId());
+        }
+
+        return userVoucherRepository.save(voucher);
+
     }
 
 

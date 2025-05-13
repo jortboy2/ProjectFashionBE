@@ -12,4 +12,7 @@ import java.util.Optional;
 public interface UserVouchersRepository extends JpaRepository<UserVoucher, Integer> {
     Optional<UserVoucher> findByUserIdAndCodeAndUsedFalse(Integer userId, String code);
     List<UserVoucher> findByUserId(Integer userId);
+    Optional<UserVoucher> findByUserIdAndCode(Integer userId, String code);
+    Optional<UserVoucher> findByCodeAndUser(String code, User user);
+
 } 

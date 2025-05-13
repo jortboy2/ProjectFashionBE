@@ -57,5 +57,12 @@ public class UserVoucherController {
     public List<UserVoucher> findUserById(@PathVariable Integer userId) {
         return userVouchersService.findAllByUserId(userId);
     }
-
+    @PutMapping("/decrease")
+    public ResponseEntity<UserVoucher> decreaseVoucherCount(
+            @RequestParam Integer userId,
+            @RequestParam String code
+    ) {
+        UserVoucher updated = userVouchersService.setCountVoucherByUserId(userId, code);
+        return ResponseEntity.ok(updated);
+    }
 }

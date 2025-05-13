@@ -14,4 +14,5 @@ public interface UserVouchersService {
     UserVoucher update(UserVoucher user);
     UserVoucher useVoucherByUserId(Integer userId, String code);
     List<UserVoucher> findAllByUserId(Integer userId);
-} 
+    UserVoucher setCountVoucherByUserId(Integer userId, String code);
+}

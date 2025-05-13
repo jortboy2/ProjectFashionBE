@@ -30,11 +30,22 @@ public class UserVoucher {
     @Column(name = "used")
     private Boolean used = false;
 
+    @Column(name = "count_code")
+    private Integer countCode;
+
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
     // Getters and Setters
+
+    public Integer getCountCode() {
+        return countCode;
+    }
+
+    public void setCountCode(Integer countCode) {
+        this.countCode = countCode;
+    }
 
     public Integer getId() {
         return id;
