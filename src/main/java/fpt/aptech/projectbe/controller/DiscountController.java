@@ -13,6 +13,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/discounts")
+@CrossOrigin(origins = "*")
 public class DiscountController {
 
     private final DiscountService discountService;
@@ -55,9 +56,29 @@ public class DiscountController {
 
     // Cập nhật mã giảm giá
     @PutMapping("/{id}")
-    public ResponseEntity<Discount> updateDiscount(@PathVariable Integer id, @RequestBody Discount discount) {
-        Discount updated = discountService.updateDiscount(id, discount);
-        return ResponseEntity.ok(updated);
+    public ResponseEntity<?> updateDiscount(@PathVariable Integer id, @RequestBody Discount discount) {
+        try {
+            // Debug log to see what we received
+            System.out.println("Received update request for ID: " + id);
+            System.out.println("Discount code: " + discount.getCode());
+            System.out.println("Discount type: " + discount.getDiscountType());
+            System.out.println("Discount value: " + discount.getDiscountValue());
+            System.out.println("Start date: " + discount.getStartDate());
+            System.out.println("End date: " + discount.getEndDate());
+            
+            Discount updated = discountService.updateDiscount(id, discount);
+            
+            // Debug log after update
+            System.out.println("Updated discount: " + updated.getCode());
+            System.out.println("Updated type: " + updated.getDiscountType());
+            System.out.println("Updated value: " + updated.getDiscountValue());
+            
+            return ResponseEntity.ok(updated);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", e.getMessage()));
+        }
     }
 
     // Xoá mã giảm giá

@@ -42,11 +42,28 @@ public class DiscountServiceImpl implements DiscountService {
     @Override
     public Discount updateDiscount(Integer id, Discount newDiscount) {
         Discount discount = getDiscountById(id);
-        discount.setCode(newDiscount.getCode());
-        discount.setDiscountType(newDiscount.getDiscountType());
-        discount.setDiscountValue(newDiscount.getDiscountValue());
-        discount.setStartDate(newDiscount.getStartDate());
-        discount.setEndDate(newDiscount.getEndDate());
+        
+        // Only update fields that are not null
+        if (newDiscount.getCode() != null) {
+            discount.setCode(newDiscount.getCode());
+        }
+        
+        if (newDiscount.getDiscountType() != null) {
+            discount.setDiscountType(newDiscount.getDiscountType());
+        }
+        
+        if (newDiscount.getDiscountValue() != null) {
+            discount.setDiscountValue(newDiscount.getDiscountValue());
+        }
+        
+        if (newDiscount.getStartDate() != null) {
+            discount.setStartDate(newDiscount.getStartDate());
+        }
+        
+        if (newDiscount.getEndDate() != null) {
+            discount.setEndDate(newDiscount.getEndDate());
+        }
+        
         return discountRepository.save(discount);
     }
 

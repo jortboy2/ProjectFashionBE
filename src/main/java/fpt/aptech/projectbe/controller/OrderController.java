@@ -20,6 +20,7 @@ import fpt.aptech.projectbe.service.SizeService;
 import fpt.aptech.projectbe.service.PaymentService;
 import fpt.aptech.projectbe.service.ProductSizeService;
 import fpt.aptech.projectbe.service.VNPayService;
+import fpt.aptech.projectbe.service.EmailService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -65,6 +66,9 @@ public class OrderController {
 
     @Autowired
     private VNPayService vnPayService;
+    
+    @Autowired
+    private EmailService emailService;
 
     private String generateOrderCode() {
         String characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -100,7 +104,6 @@ public class OrderController {
     public ResponseEntity<List<OrderDTO>> getOrdersByUserId(@PathVariable Integer userId) {
         try {
             List<Order> orders = orderService.findByUserid(userId);
-
 
             List<OrderDTO> orderDTOs = orders.stream()
                     .map(orderMapper::toDTO)
@@ -215,6 +218,14 @@ public class OrderController {
                     productSize.setStock(productSize.getStock() - itemDTO.getQuantity());
                     productSizeService.save(productSize);
                 }
+            }
+            
+            // Send order confirmation email
+            try {
+                emailService.sendOrderConfirmationEmail(savedOrder);
+            } catch (Exception e) {
+                // Log error but continue with order processing
+                System.err.println("Error sending confirmation email: " + e.getMessage());
             }
 
             return ResponseEntity.ok(orderMapper.toDTO(savedOrder));

@@ -1,5 +1,6 @@
 package fpt.aptech.projectbe.entites;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 
 import java.math.BigDecimal;
@@ -14,15 +15,19 @@ public class Discount {
 
     private String code;
 
+    @JsonProperty("discount_type")
     @Column(name = "discount_type")
     private String discountType; // 'percentage' or 'fixed'
 
+    @JsonProperty("discount_value")
     @Column(name = "discount_value")
     private BigDecimal discountValue;
 
+    @JsonProperty("start_date")
     @Column(name = "start_date")
     private LocalDateTime startDate;
 
+    @JsonProperty("end_date")
     @Column(name = "end_date")
     private LocalDateTime endDate;
 
