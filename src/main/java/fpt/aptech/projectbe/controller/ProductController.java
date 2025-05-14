@@ -143,7 +143,7 @@ public class ProductController {
             @RequestParam("name") String name,
             @RequestParam("description") String description,
             @RequestParam("price") String price,
-            @RequestParam("stock") String stock,
+
             @RequestParam("categoryId") Integer categoryId, // <-- Thêm dòng này
             @RequestParam(value = "images", required = false) List<MultipartFile> images) {
         try {
@@ -204,7 +204,7 @@ public class ProductController {
             @RequestParam(value = "name", required = false) String name,
             @RequestParam(value = "description", required = false) String description,
             @RequestParam(value = "price", required = false) String price,
-            @RequestParam(value = "stock", required = false) String stock,
+            @RequestParam(value = "categoryId", required = false) Integer categoryId,
             @RequestParam(value = "images", required = false) List<MultipartFile> images) {
         
         Product existingProduct = productService.findById(id);
@@ -217,12 +217,33 @@ public class ProductController {
             if (name != null) existingProduct.setName(name);
             if (description != null) existingProduct.setDescription(description);
             if (price != null) existingProduct.setPrice(new java.math.BigDecimal(price));
+            
+            // Cập nhật category nếu có
+            if (categoryId != null) {
+                Category category = categoryService.findById(categoryId);
+                if (category == null) {
+                    return ResponseEntity.badRequest().body("Không tìm thấy danh mục với ID: " + categoryId);
+                }
+                existingProduct.setCategory(category);
+            }
 
             // Lưu sản phẩm đã cập nhật
             Product updatedProduct = productService.update(existingProduct);
 
             // Xử lý upload hình ảnh mới nếu có
             if (images != null && !images.isEmpty()) {
+                // Xóa tất cả hình ảnh cũ
+                List<ProductImage> oldImages = productImageService.findByProduct(updatedProduct);
+                for (ProductImage oldImage : oldImages) {
+                    // Xóa file từ thư mục
+                    String fileName = oldImage.getImageUrl().substring(oldImage.getImageUrl().lastIndexOf("/") + 1);
+                    Path filePath = Paths.get(UPLOAD_DIR, fileName);
+                    Files.deleteIfExists(filePath);
+                    
+                    // Xóa record từ database
+                    productImageService.deleteById(oldImage.getId());
+                }
+
                 // Tạo thư mục nếu chưa tồn tại
                 Path uploadPath = Paths.get(UPLOAD_DIR);
                 if (!Files.exists(uploadPath)) {

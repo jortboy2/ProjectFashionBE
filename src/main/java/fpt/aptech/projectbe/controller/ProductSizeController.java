@@ -141,6 +141,47 @@ public class ProductSizeController {
         }
     }
 
+    @PutMapping("/product/{productId}/size/{sizeId}/adjust-stock")
+    public ResponseEntity<?> adjustStock(
+            @PathVariable Integer productId,
+            @PathVariable Integer sizeId,
+            @RequestParam Integer adjustment) {
+        try {
+            ProductSize productSize = productSizeService.findByProductIdAndSizeId(productId, sizeId);
+            if (productSize == null) {
+                return ResponseEntity.notFound().build();
+            }
+
+            int currentStock = productSize.getStock();
+            int newStock = currentStock + adjustment;
+
+            // Validate if the new stock would be negative
+            if (newStock < 0) {
+                return ResponseEntity.badRequest()
+                    .body(Map.of(
+                        "message", "Không thể giảm số lượng xuống dưới 0",
+                        "currentStock", currentStock,
+                        "attemptedAdjustment", adjustment
+                    ));
+            }
+
+            // Update the stock
+            productSizeService.updateStock(productId, sizeId, newStock);
+
+            return ResponseEntity.ok(Map.of(
+                "message", "Điều chỉnh số lượng thành công",
+                "productId", productId,
+                "sizeId", sizeId,
+                "oldStock", currentStock,
+                "adjustment", adjustment,
+                "newStock", newStock
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                .body(Map.of("message", "Lỗi khi điều chỉnh số lượng: " + e.getMessage()));
+        }
+    }
+
     @GetMapping("/out-of-stock")
     public ResponseEntity<List<ProductSizeDTO>> getOutOfStockProducts() {
         List<ProductSize> allProductSizes = productSizeService.findAll();
