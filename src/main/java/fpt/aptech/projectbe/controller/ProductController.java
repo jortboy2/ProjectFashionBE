@@ -204,6 +204,7 @@ public class ProductController {
             @RequestParam(value = "name", required = false) String name,
             @RequestParam(value = "description", required = false) String description,
             @RequestParam(value = "price", required = false) String price,
+            @RequestParam(value = "isFeatured", required = false) boolean isFeatured,
             @RequestParam(value = "categoryId", required = false) Integer categoryId,
             @RequestParam(value = "existingImageIds", required = false) String existingImageIdsJson,
             @RequestParam(value = "images", required = false) List<MultipartFile> images) {
@@ -221,7 +222,7 @@ public class ProductController {
             if (name != null) existingProduct.setName(name);
             if (description != null) existingProduct.setDescription(description);
             if (price != null) existingProduct.setPrice(new java.math.BigDecimal(price));
-
+            existingProduct.setIsFeatured(isFeatured);
             // Cập nhật category nếu có
             if (categoryId != null) {
                 Category category = categoryService.findById(categoryId);
