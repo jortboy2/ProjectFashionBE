@@ -205,19 +205,23 @@ public class ProductController {
             @RequestParam(value = "description", required = false) String description,
             @RequestParam(value = "price", required = false) String price,
             @RequestParam(value = "categoryId", required = false) Integer categoryId,
+            @RequestParam(value = "existingImageIds", required = false) String existingImageIdsJson,
             @RequestParam(value = "images", required = false) List<MultipartFile> images) {
-        
+
         Product existingProduct = productService.findById(id);
         if (existingProduct == null) {
             return ResponseEntity.badRequest().body("Không tìm thấy sản phẩm để cập nhật");
         }
 
         try {
+            System.out.println("Updating product ID: " + id);
+            System.out.println("Received existingImageIds: " + existingImageIdsJson);
+            
             // Cập nhật thông tin sản phẩm
             if (name != null) existingProduct.setName(name);
             if (description != null) existingProduct.setDescription(description);
             if (price != null) existingProduct.setPrice(new java.math.BigDecimal(price));
-            
+
             // Cập nhật category nếu có
             if (categoryId != null) {
                 Category category = categoryService.findById(categoryId);
@@ -229,60 +233,115 @@ public class ProductController {
 
             // Lưu sản phẩm đã cập nhật
             Product updatedProduct = productService.update(existingProduct);
-
-            // Xử lý upload hình ảnh mới nếu có
-            if (images != null && !images.isEmpty()) {
-                // Xóa tất cả hình ảnh cũ
-                List<ProductImage> oldImages = productImageService.findByProduct(updatedProduct);
-                for (ProductImage oldImage : oldImages) {
-                    // Xóa file từ thư mục
-                    String fileName = oldImage.getImageUrl().substring(oldImage.getImageUrl().lastIndexOf("/") + 1);
-                    Path filePath = Paths.get(UPLOAD_DIR, fileName);
-                    Files.deleteIfExists(filePath);
-                    
-                    // Xóa record từ database
-                    productImageService.deleteById(oldImage.getId());
+            
+            // Lấy tất cả ảnh hiện tại
+            List<ProductImage> currentImages = productImageService.findByProduct(updatedProduct);
+            System.out.println("Current images count: " + currentImages.size());
+            
+            // Nếu không có existingImageIds và không có ảnh mới, giữ nguyên ảnh cũ
+            if ((existingImageIdsJson == null || existingImageIdsJson.isEmpty()) 
+                && (images == null || images.isEmpty())) {
+                System.out.println("No image changes requested - keeping all existing images");
+                return ResponseEntity.ok(productService.findById(updatedProduct.getId()));
+            }
+            
+            // Parse danh sách ID ảnh cần giữ lại
+            List<Integer> existingImageIds = new ArrayList<>();
+            if (existingImageIdsJson != null && !existingImageIdsJson.isEmpty()) {
+                try {
+                    com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                    existingImageIds = java.util.Arrays.asList(mapper.readValue(existingImageIdsJson, Integer[].class));
+                    System.out.println("Parsed existingImageIds: " + existingImageIds);
+                } catch (Exception e) {
+                    System.err.println("Error parsing existingImageIds: " + e.getMessage());
+                    e.printStackTrace();
+                    // Không return lỗi, tiếp tục xử lý các ảnh mới nếu có
                 }
-
-                // Tạo thư mục nếu chưa tồn tại
+            }
+            
+            // Xóa các ảnh không còn trong danh sách giữ lại
+            for (ProductImage image : currentImages) {
+                if (!existingImageIds.contains(image.getId())) {
+                    System.out.println("Deleting image ID: " + image.getId());
+                    // Xóa file physical
+                    try {
+                        String fileName = image.getImageUrl().substring(image.getImageUrl().lastIndexOf("/") + 1);
+                        Path filePath = Paths.get(UPLOAD_DIR, fileName);
+                        Files.deleteIfExists(filePath);
+                        System.out.println("Deleted file: " + fileName);
+                    } catch (Exception e) {
+                        System.err.println("Error deleting image file: " + e.getMessage());
+                    }
+                    
+                    // Xóa record trong DB
+                    try {
+                        productImageService.deleteById(image.getId());
+                        System.out.println("Deleted DB record for image ID: " + image.getId());
+                    } catch (Exception e) {
+                        System.err.println("Error deleting image record: " + e.getMessage());
+                    }
+                } else {
+                    System.out.println("Keeping image ID: " + image.getId());
+                }
+            }
+            
+            // Upload ảnh mới nếu có
+            if (images != null && !images.isEmpty()) {
+                System.out.println("Processing " + images.size() + " new images");
+                
+                // Tạo thư mục upload nếu chưa có
                 Path uploadPath = Paths.get(UPLOAD_DIR);
                 if (!Files.exists(uploadPath)) {
                     Files.createDirectories(uploadPath);
+                    System.out.println("Created upload directory: " + uploadPath);
                 }
-
-                List<ProductImage> productImages = new ArrayList<>();
+                
+                List<ProductImage> newImages = new ArrayList<>();
                 for (MultipartFile file : images) {
                     if (!file.isEmpty()) {
-                        // Tạo tên file duy nhất
-                        String fileName = UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
-                        
-                        // Lưu file
-                        Path filePath = uploadPath.resolve(fileName);
-                        Files.copy(file.getInputStream(), filePath);
-
-                        // Tạo URL để truy cập hình ảnh
-                        String imageUrl = "/images/products/" + fileName;
-
-                        // Tạo ProductImage với Product đã được cập nhật
-                        ProductImage productImage = new ProductImage();
-                        productImage.setProduct(updatedProduct);
-                        productImage.setImageUrl(imageUrl);
-                        productImages.add(productImage);
+                        try {
+                            String originalFilename = file.getOriginalFilename();
+                            String fileName = UUID.randomUUID().toString() + "_" + originalFilename;
+                            Path filePath = uploadPath.resolve(fileName);
+                            Files.copy(file.getInputStream(), filePath);
+                            
+                            String imageUrl = "/images/products/" + fileName;
+                            System.out.println("Uploaded new image: " + imageUrl);
+                            
+                            ProductImage productImage = new ProductImage();
+                            productImage.setProduct(updatedProduct);
+                            productImage.setImageUrl(imageUrl);
+                            newImages.add(productImage);
+                        } catch (Exception e) {
+                            System.err.println("Error uploading image: " + e.getMessage());
+                            e.printStackTrace();
+                        }
                     }
                 }
-
-                // Lưu tất cả hình ảnh mới
-                if (!productImages.isEmpty()) {
-                    productImageService.saveAll(productImages);
+                
+                if (!newImages.isEmpty()) {
+                    try {
+                        productImageService.saveAll(newImages);
+                        System.out.println("Saved " + newImages.size() + " new images to database");
+                    } catch (Exception e) {
+                        System.err.println("Error saving new images to database: " + e.getMessage());
+                        e.printStackTrace();
+                    }
                 }
             }
-
-            // Lấy lại sản phẩm với hình ảnh mới
-            return ResponseEntity.ok(productService.findById(updatedProduct.getId()));
-        } catch (IOException e) {
-            return ResponseEntity.badRequest().body("Failed to update product: " + e.getMessage());
+            
+            // Reload product với images mới
+            Product finalProduct = productService.findById(updatedProduct.getId());
+            List<ProductImage> finalImages = productImageService.findByProduct(finalProduct);
+            System.out.println("Final image count: " + finalImages.size());
+            
+            return ResponseEntity.ok(finalProduct);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("Lỗi cập nhật sản phẩm: " + e.getMessage());
         }
     }
+
 
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteProduct(@PathVariable Integer id) {
