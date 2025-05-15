@@ -48,6 +48,18 @@ public class Product {
     @JoinColumn(name = "discount_id")
     private Discount discount;
 
+    @ColumnDefault("0")
+    @Column(name = "isFeatured")
+    private Boolean isFeatured;
+
+    public Boolean getIsFeatured() {
+        return isFeatured;
+    }
+
+    public void setIsFeatured(Boolean isFeatured) {
+        this.isFeatured = isFeatured;
+    }
+
     public Discount getDiscount() {
         return discount;
     }
