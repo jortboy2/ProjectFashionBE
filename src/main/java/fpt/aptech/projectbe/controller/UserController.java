@@ -102,10 +102,7 @@ public class UserController {
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody User user) {
-        // Kiểm tra username đã tồn tại chưa
-        if (userService.findByUsername(user.getUsername()) != null) {
-            return ResponseEntity.badRequest().body("Username đã tồn tại");
-        }
+
 
         // Kiểm tra email đã tồn tại chưa
         if (userService.findByEmail(user.getEmail()) != null) {
