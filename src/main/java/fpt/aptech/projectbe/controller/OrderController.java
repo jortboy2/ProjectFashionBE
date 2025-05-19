@@ -412,23 +412,68 @@ public class OrderController {
         try {
             Optional<Order> orderOpt = orderService.findById(orderId);
             if (orderOpt.isEmpty()) {
-                return ResponseEntity.notFound().build();
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("message", "Không tìm thấy đơn hàng"));
             }
 
             Order order = orderOpt.get();
             
-            // Kiểm tra trạng thái thanh toán hiện tại
+            // Kiểm tra trạng thái thanh toán
             if ("Đã thanh toán".equals(order.getPaymentStatus())) {
-                return ResponseEntity.badRequest().body("Đơn hàng này đã được thanh toán");
+                return ResponseEntity.badRequest()
+                    .body(Map.of("message", "Đơn hàng này đã được thanh toán"));
             }
 
-            // Tạo URL thanh toán
+            // Nếu đang chờ thanh toán
+            if ("Chờ thanh toán".equals(order.getPaymentStatus())) {
+                // Kiểm tra thời gian hết hạn
+                if (order.getExpiredAt() != null && order.getExpiredAt().before(new Date())) {
+                    // Nếu đã hết hạn, cập nhật lại thời gian hết hạn
+                    LocalDateTime now = LocalDateTime.now();
+                    LocalDateTime expired = now.plusHours(24);
+                    order.setExpiredAt(Date.from(expired.atZone(ZoneId.systemDefault()).toInstant()));
+                    orderService.update(order);
+                }
+
+                // Lấy payment hiện tại
+                List<Payment> existingPayments = paymentService.findByOrder(order);
+                if (!existingPayments.isEmpty()) {
+                    Payment existingPayment = existingPayments.get(0);
+                    
+                    // Tạo URL thanh toán với payment hiện tại
+                    String paymentUrl = vnPayService.createPaymentUrl(
+                        orderId.longValue(), 
+                        order.getTotal().longValue()
+                    );
+
+                    return ResponseEntity.ok(Map.of(
+                        "message", "Lấy URL thanh toán thành công",
+                        "paymentUrl", paymentUrl,
+                        "orderId", orderId,
+                        "amount", order.getTotal(),
+                        "transactionCode", existingPayment.getTransactionCode(),
+                        "expiredAt", order.getExpiredAt()
+                    ));
+                }
+            }
+
+            // Tạo payment mới nếu chưa có
+            Payment payment = new Payment();
+            payment.setOrder(order);
+            payment.setAmount(order.getTotal());
+            payment.setPaymentMethod("vnpay");
+            payment.setStatus("Chờ thanh toán");
+            
+            // Lưu payment
+            Payment savedPayment = paymentService.save(payment);
+
+            // Tạo URL thanh toán mới
             String paymentUrl = vnPayService.createPaymentUrl(
                 orderId.longValue(), 
                 order.getTotal().longValue()
             );
 
-            // Cập nhật trạng thái thanh toán thành chờ thanh toán
+            // Cập nhật trạng thái đơn hàng
             order.setPaymentStatus("Chờ thanh toán");
             // Set expired_at = now + 24h
             LocalDateTime now = LocalDateTime.now();
@@ -436,12 +481,19 @@ public class OrderController {
             order.setExpiredAt(Date.from(expired.atZone(ZoneId.systemDefault()).toInstant()));
             orderService.update(order);
 
-            Map<String, String> response = new HashMap<>();
-            response.put("paymentUrl", paymentUrl);
-            response.put("message", "Tạo URL thanh toán thành công");
-            return ResponseEntity.ok(response);
+            // Trả về response
+            return ResponseEntity.ok(Map.of(
+                "message", "Tạo URL thanh toán thành công",
+                "paymentUrl", paymentUrl,
+                "orderId", orderId,
+                "amount", order.getTotal(),
+                "transactionCode", savedPayment.getTransactionCode(),
+                "expiredAt", order.getExpiredAt()
+            ));
+
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Lỗi xử lý thanh toán: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("message", "Lỗi xử lý thanh toán: " + e.getMessage()));
         }
     }
 
@@ -589,6 +641,69 @@ public class OrderController {
             return ResponseEntity.ok(orderMapper.toDTO(updatedOrder));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Error updating order status: " + e.getMessage());
+        }
+    }
+
+    @PostMapping("/{id}/retry-payment")
+    public ResponseEntity<?> retryPayment(@PathVariable Integer id) {
+        try {
+            Optional<Order> orderOpt = orderService.findById(id);
+            if (orderOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("message", "Không tìm thấy đơn hàng"));
+            }
+
+            Order order = orderOpt.get();
+            
+            // Kiểm tra trạng thái thanh toán
+            if ("Đã thanh toán".equals(order.getPaymentStatus())) {
+                return ResponseEntity.badRequest()
+                    .body(Map.of("message", "Đơn hàng này đã được thanh toán"));
+            }
+
+            // Kiểm tra trạng thái đơn hàng
+            if (!"Đang xử lý".equals(order.getStatus())) {
+                return ResponseEntity.badRequest()
+                    .body(Map.of("message", "Chỉ có thể thử lại thanh toán cho đơn hàng đang xử lý"));
+            }
+
+            // Tạo payment mới
+            Payment payment = new Payment();
+            payment.setOrder(order);
+            payment.setAmount(order.getTotal());
+            payment.setPaymentMethod("vnpay");
+            payment.setStatus("Chờ thanh toán");
+            
+            // Lưu payment
+            Payment savedPayment = paymentService.save(payment);
+
+            // Cập nhật trạng thái đơn hàng
+            order.setPaymentStatus("Chờ thanh toán");
+            // Set expired_at = now + 24h
+            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime expired = now.plusHours(24);
+            order.setExpiredAt(Date.from(expired.atZone(ZoneId.systemDefault()).toInstant()));
+            orderService.update(order);
+
+            // Tạo URL thanh toán mới
+            String paymentUrl = vnPayService.createPaymentUrl(
+                id.longValue(), 
+                order.getTotal().longValue()
+            );
+
+            // Trả về response
+            return ResponseEntity.ok(Map.of(
+                "message", "Tạo URL thanh toán mới thành công",
+                "paymentUrl", paymentUrl,
+                "orderId", id,
+                "amount", order.getTotal(),
+                "transactionCode", savedPayment.getTransactionCode(),
+                "expiredAt", order.getExpiredAt()
+            ));
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("message", "Lỗi xử lý thanh toán lại: " + e.getMessage()));
         }
     }
 }
