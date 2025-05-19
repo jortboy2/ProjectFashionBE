@@ -10,6 +10,7 @@ import org.hibernate.annotations.ColumnDefault;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 @Entity
@@ -39,6 +40,7 @@ public class Order {
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
     @Column(name = "receiver_name", nullable = false, length = 100)
     private String receiverName;
 
@@ -58,9 +60,15 @@ public class Order {
     @JsonManagedReference
     private List<OrderItem> orderItems = new ArrayList<>();
 
-
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
     private List<Payment> payments = new ArrayList<>();
+
+    @Column(name = "expired_at")
+    @Temporal(TemporalType.TIMESTAMP)
+    private Date expiredAt;
+
+    @Column(name = "payment_method", length = 50)
+    private String paymentMethod;
 
     public Order() {
     }
@@ -208,5 +216,21 @@ public class Order {
     public void removeOrderItem(OrderItem orderItem) {
         orderItems.remove(orderItem);
         orderItem.setOrder(null);
+    }
+
+    public Date getExpiredAt() {
+        return expiredAt;
+    }
+
+    public void setExpiredAt(Date expiredAt) {
+        this.expiredAt = expiredAt;
+    }
+
+    public String getPaymentMethod() {
+        return paymentMethod;
+    }
+
+    public void setPaymentMethod(String paymentMethod) {
+        this.paymentMethod = paymentMethod;
     }
 }

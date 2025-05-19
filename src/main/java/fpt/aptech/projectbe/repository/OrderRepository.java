@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 
@@ -18,4 +19,6 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
     Optional<Order> findByOrderCode(String orderCode);
     @Query("SELECT o FROM Order o WHERE o.user.id = :userId")
     List<Order> findByUserid(@Param("userId") int userId);
+    List<Order> findByPaymentStatusAndExpiredAtBefore(String paymentStatus, Date expiredAt);
+    List<Order> findByPaymentMethod(String paymentMethod);
 } 

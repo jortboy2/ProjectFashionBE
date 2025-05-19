@@ -2,6 +2,7 @@ package fpt.aptech.projectbe.dto;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Date;
 import java.util.List;
 
 public class OrderDTO {
@@ -12,6 +13,7 @@ public class OrderDTO {
     private String paymentStatus;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private Date expiredAt;
 
     private String receiverName;
     private String receiverEmail;
@@ -21,6 +23,8 @@ public class OrderDTO {
     private List<OrderItemDTO> orderItems;
     
     private String orderCode;
+
+    private String paymentMethod;
 
     public OrderDTO() {}
 
@@ -145,5 +149,21 @@ public class OrderDTO {
 
     public void setOrderCode(String orderCode) {
         this.orderCode = orderCode;
+    }
+
+    public String getPaymentMethod() {
+        return paymentMethod;
+    }
+
+    public void setPaymentMethod(String paymentMethod) {
+        this.paymentMethod = paymentMethod;
+    }
+
+    public Date getExpiredAt() {
+        return expiredAt;
+    }
+
+    public void setExpiredAt(Date expiredAt) {
+        this.expiredAt = expiredAt;
     }
 } 

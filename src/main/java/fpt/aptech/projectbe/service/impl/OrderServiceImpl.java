@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 
@@ -124,23 +125,17 @@ public class OrderServiceImpl implements OrderService {
         Order existingOrder = orderRepository.findById(order.getId())
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn hàng"));
 
-        // If order is being cancelled, restore stock
-        if ("cancelled".equals(order.getStatus()) && !"cancelled".equals(existingOrder.getStatus())) {
-            for (OrderItem item : existingOrder.getOrderItems()) {
-                ProductSize productSize = productSizeService.findByProductIdAndSizeId(
-                    item.getProduct().getId(),
-                    item.getSize().getId()
-                );
-
-                if (productSize != null) {
-                    int currentStock = productSize.getStock();
-                    productSize.setStock(currentStock + item.getQuantity());
-                    productSizeService.save(productSize);
-                }
-            }
+        // Chỉ cập nhật các trường cần thiết
+        if (order.getStatus() != null) {
+            existingOrder.setStatus(order.getStatus());
+        }
+        if (order.getPaymentStatus() != null) {
+            existingOrder.setPaymentStatus(order.getPaymentStatus());
         }
 
-        return orderRepository.save(order);
+        // Có thể bổ sung cập nhật các trường khác nếu cần
+
+        return orderRepository.save(existingOrder);
     }
 
     // 6. Tìm đơn hàng theo người dùng
@@ -169,5 +164,15 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public Optional<Order> findByOrderCode(String orderCode) {
         return orderRepository.findByOrderCode(orderCode);
+    }
+
+    @Override
+    public List<Order> findByPaymentStatusAndExpiredAtBefore(String paymentStatus, Date expiredAt) {
+        return orderRepository.findByPaymentStatusAndExpiredAtBefore(paymentStatus, expiredAt);
+    }
+
+    @Override
+    public List<Order> findByPaymentMethod(String paymentMethod) {
+        return orderRepository.findByPaymentMethod(paymentMethod);
     }
 }

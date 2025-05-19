@@ -22,8 +22,10 @@ public class OrderMapper {
         dto.setTotal(order.getTotal());
         dto.setStatus(order.getStatus());
         dto.setPaymentStatus(order.getPaymentStatus());
+        dto.setPaymentMethod(order.getPaymentMethod());
         dto.setCreatedAt(order.getCreatedAt());
         dto.setUpdatedAt(order.getUpdatedAt());
+        dto.setExpiredAt(order.getExpiredAt());
         
         dto.setReceiverName(order.getReceiverName());
         dto.setReceiverEmail(order.getReceiverEmail());

@@ -2,6 +2,7 @@ package fpt.aptech.projectbe.service;
 
 import fpt.aptech.projectbe.entites.Order;
 import fpt.aptech.projectbe.entites.User;
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 
@@ -16,4 +17,6 @@ public interface OrderService {
     List<Order> findByPaymentStatus(String paymentStatus);
     List<Order> findByUserid(int userid);
     Optional<Order> findByOrderCode(String orderCode);
+    List<Order> findByPaymentStatusAndExpiredAtBefore(String paymentStatus, Date expiredAt);
+    List<Order> findByPaymentMethod(String paymentMethod);
 } 
