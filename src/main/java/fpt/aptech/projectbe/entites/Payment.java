@@ -7,6 +7,7 @@ import org.hibernate.annotations.ColumnDefault;
 
 import java.math.BigDecimal;
 import java.sql.Timestamp;
+import java.util.Random;
 
 @Entity
 @Table(name = "payments")
@@ -27,6 +28,9 @@ public class Payment {
     @Column(name = "payment_method", length = 50)
     private String paymentMethod;
 
+    @Column(name = "transaction_code", length = 50, unique = true)
+    private String transactionCode;
+
     @Column(name = "payment_date", insertable = false, updatable = false)
     private Timestamp paymentDate;
 
@@ -35,15 +39,32 @@ public class Payment {
     private String status;
 
     public Payment() {
+        this.transactionCode = generateTransactionCode();
     }
 
-    public Payment(Integer id, Order order, BigDecimal amount, String paymentMethod, Timestamp paymentDate, String status) {
+    public Payment(Integer id, Order order, BigDecimal amount, String paymentMethod, 
+                  String transactionCode, Timestamp paymentDate, String status) {
         this.id = id;
         this.order = order;
         this.amount = amount;
         this.paymentMethod = paymentMethod;
+        this.transactionCode = transactionCode != null ? transactionCode : generateTransactionCode();
         this.paymentDate = paymentDate;
         this.status = status;
+    }
+
+    // Phương thức tạo mã giao dịch ngẫu nhiên 6 ký tự
+    private String generateTransactionCode() {
+        String characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        StringBuilder code = new StringBuilder();
+        Random random = new Random();
+        
+        for (int i = 0; i < 6; i++) {
+            int index = random.nextInt(characters.length());
+            code.append(characters.charAt(index));
+        }
+        
+        return code.toString();
     }
 
     public Integer getId() {
@@ -76,6 +97,14 @@ public class Payment {
 
     public void setPaymentMethod(String paymentMethod) {
         this.paymentMethod = paymentMethod;
+    }
+
+    public String getTransactionCode() {
+        return transactionCode;
+    }
+
+    public void setTransactionCode(String transactionCode) {
+        this.transactionCode = transactionCode != null ? transactionCode : generateTransactionCode();
     }
 
     public Timestamp getPaymentDate() {

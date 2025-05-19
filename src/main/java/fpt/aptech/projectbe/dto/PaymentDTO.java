@@ -7,6 +7,7 @@ public class PaymentDTO {
     private Integer id;
     private Integer orderId;
     private BigDecimal amount;
+    private String transactionCode;
     private String paymentMethod;
     private LocalDateTime paymentDate;
     private String status;
@@ -14,11 +15,12 @@ public class PaymentDTO {
     public PaymentDTO() {
     }
 
-    public PaymentDTO(Integer id, Integer orderId, BigDecimal amount, String paymentMethod, LocalDateTime paymentDate, String status) {
+    public PaymentDTO(Integer id, Integer orderId, BigDecimal amount, String paymentMethod, String transactionCode, LocalDateTime paymentDate, String status) {
         this.id = id;
         this.orderId = orderId;
         this.amount = amount;
         this.paymentMethod = paymentMethod;
+        this.transactionCode = transactionCode;
         this.paymentDate = paymentDate;
         this.status = status;
     }
@@ -45,6 +47,14 @@ public class PaymentDTO {
 
     public void setAmount(BigDecimal amount) {
         this.amount = amount;
+    }
+
+    public String getTransactionCode() {
+        return transactionCode;
+    }
+
+    public void setTransactionCode(String transactionCode) {
+        this.transactionCode = transactionCode;
     }
 
     public String getPaymentMethod() {

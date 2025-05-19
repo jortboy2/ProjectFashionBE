@@ -380,7 +380,7 @@ public class OrderController {
             order.setStatus("Xác nhận");
             Order updatedOrder = orderService.update(order);
             
-            // Tạo payment mới
+            // Tạo payment mới với transaction code
             Payment payment = new Payment();
             payment.setOrder(updatedOrder);
             payment.setAmount(updatedOrder.getTotal());
@@ -398,7 +398,8 @@ public class OrderController {
             return ResponseEntity.ok(Map.of(
                 "message", "Xác nhận đơn hàng thành công",
                 "order", orderDTO,
-                "payment", paymentDTO
+                "payment", paymentDTO,
+                "transactionCode", savedPayment.getTransactionCode()
             ));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -451,6 +452,8 @@ public class OrderController {
             @RequestParam("vnp_TransactionStatus") String transactionStatus) {
         try {
             // Kiểm tra mã phản hồi từ VNPay
+            System.out.println("transactionStatus"+transactionStatus);
+            System.out.println("oke"+ responseCode);
             if ("00".equals(responseCode) && "00".equals(transactionStatus)) {
                 // Thanh toán thành công
                 Optional<Order> orderOpt = orderService.findById(Integer.parseInt(orderId));

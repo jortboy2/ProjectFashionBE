@@ -17,6 +17,7 @@ public class PaymentMapper {
         dto.setId(payment.getId());
         dto.setOrderId(payment.getOrder().getId());
         dto.setAmount(payment.getAmount());
+        dto.setTransactionCode(payment.getTransactionCode());
         dto.setPaymentMethod(payment.getPaymentMethod());
         dto.setPaymentDate(payment.getPaymentDate() != null ? payment.getPaymentDate().toLocalDateTime() : null);
         dto.setStatus(payment.getStatus());
@@ -32,6 +33,7 @@ public class PaymentMapper {
         Payment payment = new Payment();
         payment.setId(dto.getId());
         payment.setAmount(dto.getAmount());
+        payment.setTransactionCode(dto.getTransactionCode());
         payment.setPaymentMethod(dto.getPaymentMethod());
         payment.setPaymentDate(dto.getPaymentDate() != null ? Timestamp.valueOf(dto.getPaymentDate()) : null);
         payment.setStatus(dto.getStatus());
