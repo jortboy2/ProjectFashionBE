@@ -26,6 +26,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -168,13 +169,32 @@ public class OrderController {
     public ResponseEntity<?> createOrder(@RequestBody OrderDTO orderDTO) {
         try {
             // Validate required fields
-            if (orderDTO.getUserId() == null || orderDTO.getTotal() == null || orderDTO.getOrderItems() == null) {
-                return ResponseEntity.badRequest().body("User ID, total amount and order items are required");
+            if (orderDTO.getUserId() == null ||
+                    orderDTO.getTotal() == null || orderDTO.getTotal().compareTo(BigDecimal.ZERO) <= 0 ||
+                    orderDTO.getOrderItems() == null || orderDTO.getOrderItems().isEmpty()) {
+                return ResponseEntity.badRequest().body("User ID, total amount (> 0), and order items are required");
+            }
+
+            // Optional: Check total amount matches sum of order items
+            BigDecimal calculatedTotal = BigDecimal.ZERO;
+
+            for (OrderItemDTO item : orderDTO.getOrderItems()) {
+                if (item.getPrice() == null || item.getQuantity() == null) {
+                    return ResponseEntity.badRequest().body("Each order item must include price and quantity");
+                }
+
+                BigDecimal itemTotal = item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
+                calculatedTotal = calculatedTotal.add(itemTotal);
+            }
+
+// Kiểm tra tổng khớp với total
+            if (orderDTO.getTotal().compareTo(calculatedTotal) != 0) {
+                return ResponseEntity.badRequest().body("Total amount does not match the sum of order items");
             }
 
             // Validate payment method
-            if (orderDTO.getPaymentMethod() == null || 
-                (!"vnpay".equals(orderDTO.getPaymentMethod()) && !"cash".equals(orderDTO.getPaymentMethod()))) {
+            if (orderDTO.getPaymentMethod() == null ||
+                    (!"vnpay".equals(orderDTO.getPaymentMethod()) && !"cash".equals(orderDTO.getPaymentMethod()))) {
                 return ResponseEntity.badRequest().body("Payment method must be either 'vnpay' or 'cash'");
             }
 
@@ -190,89 +210,81 @@ public class OrderController {
             order.setTotal(orderDTO.getTotal());
             order.setStatus("Đang xử lý");
             order.setPaymentMethod(orderDTO.getPaymentMethod());
-            
-            // Set payment status based on payment method
+
             if ("vnpay".equals(orderDTO.getPaymentMethod())) {
                 order.setPaymentStatus("Chờ thanh toán");
-                // Set expired_at = now + 24h
                 LocalDateTime now = LocalDateTime.now();
                 LocalDateTime expired = now.plusHours(24);
                 order.setExpiredAt(Date.from(expired.atZone(ZoneId.systemDefault()).toInstant()));
             } else {
                 order.setPaymentStatus("Chưa thanh toán");
             }
-            
+
             order.setReceiverName(orderDTO.getReceiverName());
             order.setReceiverEmail(orderDTO.getReceiverEmail());
             order.setReceiverPhone(orderDTO.getReceiverPhone());
             order.setReceiverAddress(orderDTO.getReceiverAddress());
             order.setOrderCode(generateOrderCode());
-            
-            // Save order first to get ID
+
+            // Save order to get ID
             Order savedOrder = orderService.save(order);
 
             // Create and save order items
-            if (orderDTO.getOrderItems() != null) {
-                for (OrderItemDTO itemDTO : orderDTO.getOrderItems()) {
-                    // Validate product and size
-                    if (itemDTO.getProductId() == null || itemDTO.getSizeId() == null) {
-                        return ResponseEntity.badRequest().body("Product ID and Size ID are required for each order item");
-                    }
-
-                    // Find product and size
-                    Product product = productService.findById(itemDTO.getProductId());
-                    Size size = sizeService.findById(itemDTO.getSizeId());
-
-                    if (product == null) {
-                        return ResponseEntity.badRequest().body("Product not found with ID: " + itemDTO.getProductId());
-                    }
-                    if (size == null) {
-                        return ResponseEntity.badRequest().body("Size not found with ID: " + itemDTO.getSizeId());
-                    }
-
-                    // Check product size stock
-                    ProductSize productSize = productSizeService.findByProductAndSize(product, size);
-                    if (productSize == null) {
-                        return ResponseEntity.badRequest().body("Product size combination not found for product: " + product.getName() + " and size: " + size.getName());
-                    }
-                    
-                    if (productSize.getStock() < itemDTO.getQuantity()) {
-                        return ResponseEntity.badRequest().body("Insufficient stock for product: " + product.getName() + 
-                            " size: " + size.getName() + ". Available: " + productSize.getStock() + 
-                            ", Requested: " + itemDTO.getQuantity());
-                    }
-
-                    // Create order item
-                    OrderItem orderItem = new OrderItem();
-                    orderItem.setOrder(savedOrder);
-                    orderItem.setProduct(product);
-                    orderItem.setSize(size);
-                    orderItem.setQuantity(itemDTO.getQuantity());
-                    orderItem.setPrice(itemDTO.getPrice());
-
-                    // Save order item
-                    orderItemService.save(orderItem);
-
-                    // Decrease product stock
-                    productSize.setStock(productSize.getStock() - itemDTO.getQuantity());
-                    productSizeService.save(productSize);
+            for (OrderItemDTO itemDTO : orderDTO.getOrderItems()) {
+                if (itemDTO.getProductId() == null || itemDTO.getSizeId() == null) {
+                    return ResponseEntity.badRequest().body("Product ID and Size ID are required for each order item");
                 }
+
+                Product product = productService.findById(itemDTO.getProductId());
+                Size size = sizeService.findById(itemDTO.getSizeId());
+
+                if (product == null) {
+                    return ResponseEntity.badRequest().body("Product not found with ID: " + itemDTO.getProductId());
+                }
+                if (size == null) {
+                    return ResponseEntity.badRequest().body("Size not found with ID: " + itemDTO.getSizeId());
+                }
+
+                ProductSize productSize = productSizeService.findByProductAndSize(product, size);
+                if (productSize == null) {
+                    return ResponseEntity.badRequest().body("Product size combination not found for product: " + product.getName() + " and size: " + size.getName());
+                }
+
+                if (productSize.getStock() < itemDTO.getQuantity()) {
+                    return ResponseEntity.badRequest().body("Insufficient stock for product: " + product.getName() +
+                            " size: " + size.getName() + ". Available: " + productSize.getStock() +
+                            ", Requested: " + itemDTO.getQuantity());
+                }
+
+                OrderItem orderItem = new OrderItem();
+                orderItem.setOrder(savedOrder);
+                orderItem.setProduct(product);
+                orderItem.setSize(size);
+                orderItem.setQuantity(itemDTO.getQuantity());
+                orderItem.setPrice(itemDTO.getPrice());
+
+                orderItemService.save(orderItem);
+
+                // Decrease stock
+                productSize.setStock(productSize.getStock() - itemDTO.getQuantity());
+                productSizeService.save(productSize);
             }
-            
-            // Send order confirmation email
+
+            // Send confirmation email
             try {
                 emailService.sendOrderConfirmationEmail(savedOrder);
             } catch (Exception e) {
-                // Log error but continue with order processing
                 System.err.println("Error sending confirmation email: " + e.getMessage());
             }
 
             return ResponseEntity.ok(orderMapper.toDTO(savedOrder));
+
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body("Error creating order: " + e.getMessage());
+                    .body("Error creating order: " + e.getMessage());
         }
     }
+
 
     @PutMapping("/{id}")
     public ResponseEntity<OrderDTO> updateOrder(@PathVariable Integer id, @RequestBody OrderDTO orderDTO) {

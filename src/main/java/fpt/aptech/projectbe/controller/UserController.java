@@ -61,6 +61,36 @@ public class UserController {
     }
 
 
+    @PostMapping("/change-password")
+    public ResponseEntity<?> changePassword(@RequestBody Map<String, String> request) {
+        Integer userId = null;
+        try {
+            userId = Integer.parseInt(request.get("userId"));
+        } catch (NumberFormatException e) {
+            return ResponseEntity.badRequest().body("ID người dùng không hợp lệ");
+        }
+
+        String oldPassword = request.get("oldPassword");
+        String newPassword = request.get("newPassword");
+
+        if (oldPassword == null || newPassword == null || userId == null) {
+            return ResponseEntity.badRequest().body("Thông tin không đầy đủ");
+        }
+
+        User user = userService.findById(userId);
+        if (user == null) {
+            return ResponseEntity.badRequest().body("Không tìm thấy người dùng");
+        }
+
+        if (!user.getPassword().equals(oldPassword)) {
+            return ResponseEntity.badRequest().body("Mật khẩu cũ không đúng");
+        }
+
+        user.setPassword(newPassword);
+        userService.update(user);
+
+        return ResponseEntity.ok("Đổi mật khẩu thành công");
+    }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteUser(@PathVariable Integer id) {
