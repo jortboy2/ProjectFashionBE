@@ -1,6 +1,7 @@
 package fpt.aptech.projectbe.controller;
 
 import fpt.aptech.projectbe.entites.User;
+import fpt.aptech.projectbe.service.PasswordService;
 import fpt.aptech.projectbe.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -18,6 +19,9 @@ public class UserController {
     @Autowired
     private UserService userService;
 
+    @Autowired
+    private PasswordService passwordService;
+
     @GetMapping
     public ResponseEntity<List<User>> getAllUsers() {
         return ResponseEntity.ok(userService.findAll());
@@ -34,6 +38,8 @@ public class UserController {
 
     @PostMapping
     public ResponseEntity<User> createUser(@RequestBody User user) {
+        // Mã hóa mật khẩu trước khi lưu
+        user.setPassword(passwordService.encodePassword(user.getPassword()));
         return ResponseEntity.ok(userService.save(user));
     }
 
@@ -50,7 +56,7 @@ public class UserController {
         existingUser.setPhone(user.getPhone());
 
         if (user.getPassword() != null && !user.getPassword().isEmpty()) {
-            existingUser.setPassword(user.getPassword()); // nên mã hóa nếu dùng bcrypt
+            existingUser.setPassword(passwordService.encodePassword(user.getPassword()));
         }
 
         if (user.getRole() != null) {
@@ -60,7 +66,40 @@ public class UserController {
         return ResponseEntity.ok(userService.update(existingUser));
     }
 
+    @PostMapping("/change-password")
+    public ResponseEntity<?> changePassword(@RequestBody Map<String, String> request) {
+        Integer userId = null;
+        try {
+            userId = Integer.parseInt(request.get("userId"));
+        } catch (NumberFormatException e) {
+            return ResponseEntity.badRequest().body("ID người dùng không hợp lệ");
+        }
 
+        String oldPassword = request.get("oldPassword");
+        String newPassword = request.get("newPassword");
+
+        if (oldPassword == null || newPassword == null || userId == null) {
+            return ResponseEntity.badRequest().body("Thông tin không đầy đủ");
+        }
+
+        if (newPassword.length() < 6) {
+            return ResponseEntity.badRequest().body("Mật khẩu mới phải có ít nhất 6 ký tự");
+        }
+
+        User user = userService.findById(userId);
+        if (user == null) {
+            return ResponseEntity.badRequest().body("Không tìm thấy người dùng");
+        }
+
+        if (!passwordService.matches(oldPassword, user.getPassword())) {
+            return ResponseEntity.badRequest().body("Mật khẩu cũ không đúng");
+        }
+
+        user.setPassword(passwordService.encodePassword(newPassword));
+        userService.update(user);
+
+        return ResponseEntity.ok("Đổi mật khẩu thành công");
+    }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteUser(@PathVariable Integer id) {
@@ -85,7 +124,7 @@ public class UserController {
             return ResponseEntity.badRequest().body("Không tìm thấy người dùng");
         }
 
-        if (!user.getPassword().equals(password)) {
+        if (!passwordService.matches(password, user.getPassword())) {
             return ResponseEntity.badRequest().body("Mật khẩu không đúng");
         }
 
@@ -102,12 +141,18 @@ public class UserController {
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody User user) {
-
-
         // Kiểm tra email đã tồn tại chưa
         if (userService.findByEmail(user.getEmail()) != null) {
             return ResponseEntity.badRequest().body("Email đã tồn tại");
         }
+
+        // Kiểm tra độ dài mật khẩu
+        if (user.getPassword() == null || user.getPassword().length() < 6) {
+            return ResponseEntity.badRequest().body("Mật khẩu phải có ít nhất 6 ký tự");
+        }
+
+        // Mã hóa mật khẩu trước khi lưu
+        user.setPassword(passwordService.encodePassword(user.getPassword()));
 
         // Tạo user mới với role mặc định là 2
         User savedUser = userService.createUserWithDefaultRole(user);
