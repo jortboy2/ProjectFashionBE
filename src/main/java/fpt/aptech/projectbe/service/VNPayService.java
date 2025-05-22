@@ -16,6 +16,10 @@ public class VNPayService {
     private VNPayConfig vnPayConfig;
 
     public String createPaymentUrl(Long orderId, long amount) throws UnsupportedEncodingException {
+        return createPaymentUrl(orderId, amount, null);
+    }
+
+    public String createPaymentUrl(Long orderId, long amount, String returnUrl) throws UnsupportedEncodingException {
         String vnp_Version = "2.1.0";
         String vnp_Command = "pay";
         String vnp_OrderInfo = "Thanh toan don hang #" + orderId;
@@ -36,7 +40,7 @@ public class VNPayService {
         vnp_Params.put("vnp_OrderInfo", vnp_OrderInfo);
         vnp_Params.put("vnp_OrderType", vnp_OrderType);
         vnp_Params.put("vnp_Locale", vnp_Locale);
-        vnp_Params.put("vnp_ReturnUrl", vnPayConfig.getVnp_ReturnUrl());
+        vnp_Params.put("vnp_ReturnUrl", returnUrl != null ? returnUrl : vnPayConfig.getVnp_ReturnUrl());
         vnp_Params.put("vnp_IpAddr", vnp_IpAddr);
 
         Calendar cld = Calendar.getInstance(TimeZone.getTimeZone("Etc/GMT+7"));
