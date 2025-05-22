@@ -13,18 +13,19 @@ public class Message {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int id;
 
-    // Người gửi
     @ManyToOne
     @JoinColumn(name = "sender_id", nullable = false)
     private User sender;
 
-    // Người nhận
     @ManyToOne
     @JoinColumn(name = "receiver_id", nullable = false)
     private User receiver;
 
     @Column(nullable = false, columnDefinition = "NVARCHAR(MAX)")
     private String message;
+
+    @Column(name = "local_id")
+    private String localId;
 
     @Column(name = "sent_at")
     private LocalDateTime sentAt = LocalDateTime.now();
@@ -33,6 +34,22 @@ public class Message {
     private Boolean isRead = false;
 
     // Getters and setters...
+
+    public String getLocalId() {
+        return localId;
+    }
+
+    public void setLocalId(String localId) {
+        this.localId = localId;
+    }
+
+    public Boolean getRead() {
+        return isRead;
+    }
+
+    public void setRead(Boolean read) {
+        isRead = read;
+    }
 
     public int getId() {
         return id;

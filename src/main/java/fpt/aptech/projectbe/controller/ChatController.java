@@ -36,7 +36,6 @@ public class ChatController {
         try {
             logger.info("Received message: {}", messageDTO);
 
-            // Save message
             Message message = new Message();
             User sender = userRepository.findById(messageDTO.getSenderId())
                     .orElseThrow(() -> new RuntimeException("Sender not found"));
@@ -46,36 +45,22 @@ public class ChatController {
             message.setSender(sender);
             message.setReceiver(receiver);
             message.setMessage(messageDTO.getMessage());
-
-            // Kiểm tra và gán localId nếu có từ client (Quan trọng cho Optimistic UI)
-            if (messageDTO.getLocalId() != null) {
-                // Bạn cần thêm trường `localId` vào Entity `Message` và DTO
-                // hoặc xử lý theo cách khác nếu không muốn lưu localId vào DB
-                // Ví dụ: message.setLocalId(messageDTO.getLocalId());
-            }
+            message.setLocalId(messageDTO.getLocalId()); // Gán localId nếu có
 
             Message savedMessage = messageRepository.save(message);
             logger.info("Saved message: {}", savedMessage);
 
-            // Convert to DTO
             MessageDTO savedMessageDTO = convertToDTO(savedMessage);
+            savedMessageDTO.setLocalId(messageDTO.getLocalId()); // Gửi lại localId
 
-            // Gửi lại localId cho client nếu có để client có thể khớp tin nhắn optimistic
-            savedMessageDTO.setLocalId(messageDTO.getLocalId()); // Đảm bảo DTO có setter cho localId
-
-            // Gửi tin nhắn đến người nhận (admin)
-            String receiverDestination = "/user/" + messageDTO.getReceiverId() + "/queue/messages";
-            logger.info("Sending message to receiver destination: {}", receiverDestination);
+            // Gửi tới receiver
             messagingTemplate.convertAndSendToUser(
                     String.valueOf(messageDTO.getReceiverId()),
                     "/queue/messages",
                     savedMessageDTO
             );
 
-            // Gửi tin nhắn trở lại cho người gửi (user)
-            // Điều này đảm bảo tin nhắn xuất hiện ngay lập tức cho người gửi
-            String senderDestination = "/user/" + messageDTO.getSenderId() + "/queue/messages";
-            logger.info("Sending message back to sender destination: {}", senderDestination);
+            // Gửi lại cho sender
             messagingTemplate.convertAndSendToUser(
                     String.valueOf(messageDTO.getSenderId()),
                     "/queue/messages",
@@ -87,6 +72,7 @@ public class ChatController {
             throw e;
         }
     }
+
 
     @GetMapping("/messages/{userId}/{adminId}")
     public List<MessageDTO> getMessages(@PathVariable int userId, @PathVariable int adminId) {
