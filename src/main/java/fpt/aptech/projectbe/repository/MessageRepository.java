@@ -24,6 +24,8 @@ public interface MessageRepository extends JpaRepository<Message, Integer> {
 
     @Modifying
     @Transactional
-    @Query("UPDATE Message m SET m.isRead = true WHERE m.receiver.id = :userId AND m.sender.id = :senderId")
+    @Query("UPDATE Message m SET m.isRead = true WHERE " +
+            "(m.receiver.id = :userId AND m.sender.id = :senderId) " +
+            "OR (m.receiver.id = :senderId AND m.sender.id = :userId)")
     int markMessagesAsRead(@Param("userId") int userId, @Param("senderId") int senderId);
 } 

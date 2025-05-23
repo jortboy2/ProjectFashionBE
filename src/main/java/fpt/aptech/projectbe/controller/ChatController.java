@@ -6,8 +6,10 @@ import fpt.aptech.projectbe.entites.User;
 import fpt.aptech.projectbe.repository.MessageRepository;
 import fpt.aptech.projectbe.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
+import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.*;
 import org.slf4j.Logger;
@@ -32,10 +34,12 @@ public class ChatController {
     private UserRepository userRepository;
 
     @MessageMapping("/chat.sendMessage")
-    public void sendMessage(@Payload MessageDTO messageDTO) {
+    @SendTo("/topic/messages")
+    public MessageDTO sendMessage(@Payload MessageDTO messageDTO) {
         try {
-            logger.info("Received message: {}", messageDTO);
+            logger.info("💬 [Server] Received message: {}", messageDTO);
 
+            // Lưu tin nhắn
             Message message = new Message();
             User sender = userRepository.findById(messageDTO.getSenderId())
                     .orElseThrow(() -> new RuntimeException("Sender not found"));
@@ -45,30 +49,38 @@ public class ChatController {
             message.setSender(sender);
             message.setReceiver(receiver);
             message.setMessage(messageDTO.getMessage());
-            message.setLocalId(messageDTO.getLocalId()); // Gán localId nếu có
+            message.setLocalId(messageDTO.getLocalId());
 
             Message savedMessage = messageRepository.save(message);
-            logger.info("Saved message: {}", savedMessage);
+            logger.info("💾 [Server] Saved message: {}", savedMessage);
 
             MessageDTO savedMessageDTO = convertToDTO(savedMessage);
-            savedMessageDTO.setLocalId(messageDTO.getLocalId()); // Gửi lại localId
+            savedMessageDTO.setLocalId(messageDTO.getLocalId());
 
-            // Gửi tới receiver
-            messagingTemplate.convertAndSendToUser(
-                    String.valueOf(messageDTO.getReceiverId()),
-                    "/queue/messages",
-                    savedMessageDTO
-            );
+            // Gửi tin nhắn tới người nhận qua private channel
+            try {
+                messagingTemplate.convertAndSendToUser(
+                        String.valueOf(messageDTO.getReceiverId()),
+                        "queue/private",
+                        savedMessageDTO
+                );
+                logger.info("📤 [Server] Sent to receiver's private channel");
+            } catch (Exception e) {
+                logger.error("❌ [Server] Error sending to private channel: {}", e.getMessage());
+            }
 
-            // Gửi lại cho sender
-            messagingTemplate.convertAndSendToUser(
-                    String.valueOf(messageDTO.getSenderId()),
-                    "/queue/messages",
-                    savedMessageDTO
-            );
+            // Gửi tin nhắn tới public channel
+            try {
+                messagingTemplate.convertAndSend("/topic/messages", savedMessageDTO);
+                logger.info("📤 [Server] Broadcast to public channel");
+            } catch (Exception e) {
+                logger.error("❌ [Server] Error broadcasting: {}", e.getMessage());
+            }
+
+            return savedMessageDTO;
 
         } catch (Exception e) {
-            logger.error("Error sending message", e);
+            logger.error("❌ [Server] Error processing message", e);
             throw e;
         }
     }
@@ -97,9 +109,10 @@ public class ChatController {
     }
 
     @PostMapping("/read/{userId}/{senderId}")
-    public void markMessagesAsRead(@PathVariable int userId, @PathVariable int senderId) {
-        logger.info("Marking messages as read between user {} and sender {}", userId, senderId);
-        messageRepository.markMessagesAsRead(userId, senderId);
+    public ResponseEntity<?> markMessagesAsRead(@PathVariable int userId, @PathVariable int senderId) {
+        int updatedCount = messageRepository.markMessagesAsRead(userId, senderId);
+        logger.info("Updated {} messages", updatedCount);
+        return ResponseEntity.ok("Updated " + updatedCount + " messages");
     }
 
     @GetMapping("/last-message/{userId}/{adminId}")
