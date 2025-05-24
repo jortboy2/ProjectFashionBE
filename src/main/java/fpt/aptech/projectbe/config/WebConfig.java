@@ -10,8 +10,10 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/api/**")
-                .allowedOrigins("*")
-                .allowedMethods("*");
+                .allowedOrigins("*") // nên cụ thể, không dùng "*"
+                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                .allowedHeaders("*")
+                .allowCredentials(false);
         registry.addMapping("/images/**") // <- thêm dòng này
                 .allowedOrigins("*")
                 .allowedMethods("GET");

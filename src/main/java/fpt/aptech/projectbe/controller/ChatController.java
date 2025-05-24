@@ -118,6 +118,7 @@ public class ChatController {
     @GetMapping("/last-message/{userId}/{adminId}")
     public MessageDTO getLastMessage(@PathVariable int userId, @PathVariable int adminId) {
         logger.info("Getting last message between user {} and admin {}", userId, adminId);
+        
         List<Message> messages = messageRepository.findMessagesBetweenUsers(userId, adminId);
         if (messages.isEmpty()) {
             return null;
