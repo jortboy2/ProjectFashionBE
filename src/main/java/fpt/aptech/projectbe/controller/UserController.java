@@ -1,8 +1,10 @@
 package fpt.aptech.projectbe.controller;
 
 import fpt.aptech.projectbe.entites.User;
+import fpt.aptech.projectbe.service.impl.EmailService;
 import fpt.aptech.projectbe.service.PasswordService;
 import fpt.aptech.projectbe.service.UserService;
+import fpt.aptech.projectbe.service.impl.OtpService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -21,7 +23,11 @@ public class UserController {
 
     @Autowired
     private PasswordService passwordService;
+    @Autowired
+    private EmailService emailService;
 
+    @Autowired
+    private OtpService otpService;
     @GetMapping
     public ResponseEntity<List<User>> getAllUsers() {
         return ResponseEntity.ok(userService.findAll());
@@ -166,5 +172,49 @@ public class UserController {
         response.put("message", "Đăng ký thành công");
 
         return ResponseEntity.ok(response);
+    }
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@RequestBody Map<String, String> request) {
+        String email = request.get("email");
+        User user = userService.findByEmail(email);
+        if (user == null) {
+            return ResponseEntity.badRequest().body("Không tìm thấy người dùng với email này");
+        }
+
+        String otp = otpService.generateOtp(email);
+        emailService.sendOtpEmail(email, otp);
+        return ResponseEntity.ok("OTP đã được gửi đến email của bạn");
+    }
+
+    @PostMapping("/verify-otp")
+    public ResponseEntity<?> verifyOtp(@RequestBody Map<String, String> request) {
+        String email = request.get("email");
+        String otp = request.get("otp");
+
+        if (otpService.validateOtp(email, otp)) {
+            otpService.clearOtp(email);
+            return ResponseEntity.ok("OTP hợp lệ. Tiến hành đặt lại mật khẩu.");
+        } else {
+            return ResponseEntity.badRequest().body("OTP không hợp lệ hoặc đã hết hạn.");
+        }
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@RequestBody Map<String, String> request) {
+        String email = request.get("email");
+        String newPassword = request.get("newPassword");
+
+        if (newPassword.length() < 6) {
+            return ResponseEntity.badRequest().body("Mật khẩu mới phải có ít nhất 6 ký tự");
+        }
+
+        User user = userService.findByEmail(email);
+        if (user == null) {
+            return ResponseEntity.badRequest().body("Không tìm thấy người dùng");
+        }
+
+        user.setPassword(passwordService.encodePassword(newPassword));
+        userService.update(user);
+        return ResponseEntity.ok("Đặt lại mật khẩu thành công");
     }
 }
