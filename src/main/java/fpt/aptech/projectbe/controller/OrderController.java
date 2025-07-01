@@ -21,6 +21,7 @@ import fpt.aptech.projectbe.service.PaymentService;
 import fpt.aptech.projectbe.service.ProductSizeService;
 import fpt.aptech.projectbe.service.VNPayService;
 import fpt.aptech.projectbe.service.EmailService;
+import fpt.aptech.projectbe.service.PayPalService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -36,9 +37,9 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Date;
 
+@CrossOrigin(origins = "*")
 @RestController
 @RequestMapping("/api/orders")
-@CrossOrigin(origins = "*")
 public class OrderController {
 
     @Autowired
@@ -73,6 +74,9 @@ public class OrderController {
     
     @Autowired
     private EmailService emailService;
+
+    @Autowired
+    private PayPalService payPalService;
 
     private String generateOrderCode() {
         String characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -193,9 +197,11 @@ public class OrderController {
             }
 
             // Validate payment method
-            if (orderDTO.getPaymentMethod() == null ||
-                    (!"vnpay".equals(orderDTO.getPaymentMethod()) && !"cash".equals(orderDTO.getPaymentMethod()))) {
-                return ResponseEntity.badRequest().body("Payment method must be either 'vnpay' or 'cash'");
+            if (orderDTO.getPaymentMethod() == null || 
+                (!"vnpay".equals(orderDTO.getPaymentMethod()) && 
+                 !"cash".equals(orderDTO.getPaymentMethod()) && 
+                 !"paypal".equals(orderDTO.getPaymentMethod()))) {
+                return ResponseEntity.badRequest().body("Payment method must be either 'vnpay', 'cash', or 'paypal'");
             }
 
             // Find user
@@ -212,6 +218,11 @@ public class OrderController {
             order.setPaymentMethod(orderDTO.getPaymentMethod());
 
             if ("vnpay".equals(orderDTO.getPaymentMethod())) {
+                order.setPaymentStatus("Chờ thanh toán");
+                LocalDateTime now = LocalDateTime.now();
+                LocalDateTime expired = now.plusHours(24);
+                order.setExpiredAt(Date.from(expired.atZone(ZoneId.systemDefault()).toInstant()));
+            } else if ("paypal".equals(orderDTO.getPaymentMethod())) {
                 order.setPaymentStatus("Chờ thanh toán");
                 LocalDateTime now = LocalDateTime.now();
                 LocalDateTime expired = now.plusHours(24);
@@ -591,7 +602,7 @@ public class OrderController {
             }
 
             // Thanh toán thất bại
-            return ResponseEntity.badRequest().body(Map.of(
+            return ResponseEntity.badRequest().body(Map.of( 
                 "message", "Thanh toán thất bại",
                 "responseCode", responseCode,
                 "transactionStatus", transactionStatus,
@@ -770,6 +781,382 @@ public class OrderController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(Map.of("message", "Lỗi xử lý thanh toán lại: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{orderId}/payment/paypal")
+    public ResponseEntity<?> processPayPalPayment(
+            @PathVariable Integer orderId,
+            @RequestBody(required = false) Map<String, Object> requestBody) {
+        try {
+            Optional<Order> orderOpt = orderService.findById(orderId);
+            if (orderOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of(
+                        "success", false,
+                        "message", "Không tìm thấy đơn hàng",
+                        "code", "ORDER_NOT_FOUND"
+                    ));
+            }
+
+            Order order = orderOpt.get();
+            
+            // Kiểm tra trạng thái thanh toán
+            if ("Đã thanh toán".equals(order.getPaymentStatus())) {
+                return ResponseEntity.badRequest()
+                    .body(Map.of(
+                        "success", false,
+                        "message", "Đơn hàng này đã được thanh toán",
+                        "code", "ORDER_ALREADY_PAID"
+                    ));
+            }
+
+            // Lấy returnUrl và cancelUrl từ request body
+            String returnUrl = null;
+            String cancelUrl = null;
+            if (requestBody != null) {
+                returnUrl = (String) requestBody.get("returnUrl");
+                cancelUrl = (String) requestBody.get("cancelUrl");
+            }
+
+            // Tạo payment mới cho PayPal
+            Payment payment = new Payment();
+            payment.setOrder(order);
+            payment.setAmount(order.getTotal());
+            payment.setPaymentMethod("paypal");
+            payment.setStatus("Chờ thanh toán");
+            
+            // Lưu payment
+            Payment savedPayment = paymentService.save(payment);
+
+            // Tạo PayPal payment URL
+            String paypalPaymentUrl = payPalService.createPaymentUrl(
+                orderId.longValue(),
+                order.getTotal().longValue(),
+                returnUrl,
+                cancelUrl
+            );
+
+            // Cập nhật trạng thái đơn hàng
+            order.setPaymentStatus("Chờ thanh toán");
+            // Set expired_at = now + 24h
+            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime expired = now.plusHours(24);
+            order.setExpiredAt(Date.from(expired.atZone(ZoneId.systemDefault()).toInstant()));
+            orderService.update(order);
+
+            // Trả về response
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Tạo URL thanh toán PayPal thành công",
+                "data", Map.of(
+                    "paymentUrl", paypalPaymentUrl,
+                    "orderId", orderId,
+                    "amount", order.getTotal(),
+                    "transactionCode", savedPayment.getTransactionCode(),
+                    "expiredAt", order.getExpiredAt()
+                )
+            ));
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of(
+                    "success", false,
+                    "message", "Lỗi xử lý thanh toán PayPal: " + e.getMessage(),
+                    "code", "INTERNAL_SERVER_ERROR"
+                ));
+        }
+    }
+
+    @GetMapping("/payment/paypal/return")
+    public ResponseEntity<?> paypalReturnWeb(
+            @RequestParam("paymentId") String paymentId,
+            @RequestParam("PayerID") String payerId,
+            @RequestParam("orderId") Integer orderId
+    ) {
+        try {
+            boolean paymentSuccess = payPalService.executePayment(paymentId, payerId);
+            if (paymentSuccess) {
+                Optional<Order> orderOpt = orderService.findById(orderId);
+                if (orderOpt.isPresent()) {
+                    Order order = orderOpt.get();
+                    order.setPaymentStatus("Đã thanh toán");
+                    order.setStatus("Xác nhận");
+                    Order updatedOrder = orderService.update(order);
+                    List<Payment> existingPayments = paymentService.findByOrder(order);
+                    Payment payment;
+                    if (!existingPayments.isEmpty()) {
+                        payment = existingPayments.get(0);
+                    } else {
+                        payment = new Payment();
+                    }
+                    payment.setOrder(updatedOrder);
+                    payment.setAmount(updatedOrder.getTotal());
+                    payment.setPaymentMethod("paypal");
+                    payment.setStatus("Đã thanh toán");
+                    payment.setTransactionCode(paymentId);
+                    paymentService.save(payment);
+                    return ResponseEntity.ok(Map.of(
+                        "success", true,
+                        "message", "Thanh toán PayPal thành công",
+                        "data", Map.of(
+                            "order", orderMapper.toDTO(updatedOrder),
+                            "redirectUrl", "http://localhost:5173/order-success"
+                        )
+                    ));
+                }
+            }
+            return ResponseEntity.ok(Map.of(
+                "success", false,
+                "message", "Thanh toán PayPal thất bại",
+                "data", Map.of(
+                    "redirectUrl", "http://localhost:5173/order-failed"
+                )
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.ok(Map.of(
+                "success", false,
+                "message", "Lỗi xử lý kết quả thanh toán PayPal: " + e.getMessage(),
+                "data", Map.of(
+                    "redirectUrl", "http://localhost:5173/order-failed"
+                )
+            ));
+        }
+    }
+
+    @GetMapping("/payment/paypal/return/mobile")
+    public ResponseEntity<?> paypalReturnMobile(
+            @RequestParam("paymentId") String paymentId,
+            @RequestParam("PayerID") String payerId,
+            @RequestParam("token") String token) {
+        try {
+            boolean paymentSuccess = payPalService.executePayment(paymentId, payerId);
+            if (paymentSuccess) {
+                Integer orderId = payPalService.getOrderIdFromToken(token);
+                Optional<Order> orderOpt = orderService.findById(orderId);
+                if (orderOpt.isPresent()) {
+                    Order order = orderOpt.get();
+                    order.setPaymentStatus("Đã thanh toán");
+                    order.setStatus("Xác nhận");
+                    Order updatedOrder = orderService.update(order);
+                    List<Payment> existingPayments = paymentService.findByOrder(order);
+                    Payment payment;
+                    if (!existingPayments.isEmpty()) {
+                        payment = existingPayments.get(0);
+                    } else {
+                        payment = new Payment();
+                    }
+                    payment.setOrder(updatedOrder);
+                    payment.setAmount(updatedOrder.getTotal());
+                    payment.setPaymentMethod("paypal");
+                    payment.setStatus("Đã thanh toán");
+                    payment.setTransactionCode(paymentId);
+                    paymentService.save(payment);
+                    return ResponseEntity.ok(Map.of(
+                        "success", true,
+                        "message", "Thanh toán PayPal thành công",
+                        "data", Map.of(
+                            "order", orderMapper.toDTO(updatedOrder),
+                            "redirectUrl", "fashionmobile://payment/paypal/return/mobile?success=true&orderId=" + updatedOrder.getId()
+                        )
+                    ));
+                }
+            }
+            return ResponseEntity.ok(Map.of(
+                "success", false,
+                "message", "Thanh toán PayPal thất bại",
+                "data", Map.of(
+                    "redirectUrl", "fashionmobile://payment/paypal/return/mobile?success=false&error=PAYMENT_FAILED"
+                )
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.ok(Map.of(
+                "success", false,
+                "message", "Lỗi xử lý kết quả thanh toán PayPal: " + e.getMessage(),
+                "data", Map.of(
+                    "redirectUrl", "fashionmobile://payment/paypal/return/mobile?success=false&error=" + e.getMessage()
+                )
+            ));
+        }
+    }
+
+    @PostMapping("/{id}/retry-payment/paypal")
+    public ResponseEntity<?> retryPayPalPayment(@PathVariable Integer id) {
+        try {
+            Optional<Order> orderOpt = orderService.findById(id);
+            if (orderOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of(
+                        "success", false,
+                        "message", "Không tìm thấy đơn hàng",
+                        "code", "ORDER_NOT_FOUND"
+                    ));
+            }
+
+            Order order = orderOpt.get();
+            
+            // Kiểm tra trạng thái thanh toán
+            if ("Đã thanh toán".equals(order.getPaymentStatus())) {
+                return ResponseEntity.badRequest()
+                    .body(Map.of(
+                        "success", false,
+                        "message", "Đơn hàng này đã được thanh toán",
+                        "code", "ORDER_ALREADY_PAID"
+                    ));
+            }
+
+            // Kiểm tra trạng thái đơn hàng
+            if (!"Đang xử lý".equals(order.getStatus())) {
+                return ResponseEntity.badRequest()
+                    .body(Map.of(
+                        "success", false,
+                        "message", "Chỉ có thể thử lại thanh toán cho đơn hàng đang xử lý",
+                        "code", "INVALID_ORDER_STATUS"
+                    ));
+            }
+
+            // Tạo payment mới cho PayPal
+            Payment payment = new Payment();
+            payment.setOrder(order);
+            payment.setAmount(order.getTotal());
+            payment.setPaymentMethod("paypal");
+            payment.setStatus("Chờ thanh toán");
+            
+            // Lưu payment
+            Payment savedPayment = paymentService.save(payment);
+
+            // Cập nhật trạng thái đơn hàng
+            order.setPaymentStatus("Chờ thanh toán");
+            // Set expired_at = now + 24h
+            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime expired = now.plusHours(24);
+            order.setExpiredAt(Date.from(expired.atZone(ZoneId.systemDefault()).toInstant()));
+            orderService.update(order);
+
+            // Tạo PayPal payment URL mới
+            String returnUrl = "http://localhost:5173/order-success";
+            String cancelUrl = "http://localhost:5173/order-failed";
+            String paypalPaymentUrl = payPalService.createPaymentUrl(
+                id.longValue(),
+                order.getTotal().longValue(),
+                returnUrl,
+                cancelUrl
+            );
+
+            // Trả về response
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Tạo URL thanh toán PayPal mới thành công",
+                "data", Map.of(
+                    "paymentUrl", paypalPaymentUrl,
+                    "orderId", id,
+                    "amount", order.getTotal(),
+                    "transactionCode", savedPayment.getTransactionCode(),
+                    "expiredAt", order.getExpiredAt()
+                )
+            ));
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of(
+                    "success", false,
+                    "message", "Lỗi xử lý thanh toán PayPal lại: " + e.getMessage(),
+                    "code", "INTERNAL_SERVER_ERROR"
+                ));
+        }
+    }
+
+    @PostMapping("/{id}/retry-payment/paypal/mobile")
+    public ResponseEntity<?> retryPayPalPaymentMobile(
+            @PathVariable Integer id,
+            @RequestBody(required = false) Map<String, Object> requestBody) {
+        try {
+            Optional<Order> orderOpt = orderService.findById(id);
+            if (orderOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of(
+                        "success", false,
+                        "message", "Không tìm thấy đơn hàng",
+                        "code", "ORDER_NOT_FOUND"
+                    ));
+            }
+
+            Order order = orderOpt.get();
+            
+            // Kiểm tra trạng thái thanh toán
+            if ("Đã thanh toán".equals(order.getPaymentStatus())) {
+                return ResponseEntity.badRequest()
+                    .body(Map.of(
+                        "success", false,
+                        "message", "Đơn hàng này đã được thanh toán",
+                        "code", "ORDER_ALREADY_PAID"
+                    ));
+            }
+
+            // Kiểm tra trạng thái đơn hàng
+            if (!"Đang xử lý".equals(order.getStatus())) {
+                return ResponseEntity.badRequest()
+                    .body(Map.of(
+                        "success", false,
+                        "message", "Chỉ có thể thử lại thanh toán cho đơn hàng đang xử lý",
+                        "code", "INVALID_ORDER_STATUS"
+                    ));
+            }
+
+            // Lấy returnUrl và cancelUrl từ request body nếu có
+            String returnUrl = null;
+            String cancelUrl = null;
+            if (requestBody != null) {
+                returnUrl = (String) requestBody.get("returnUrl");
+                cancelUrl = (String) requestBody.get("cancelUrl");
+            }
+
+            // Tạo payment mới cho PayPal
+            Payment payment = new Payment();
+            payment.setOrder(order);
+            payment.setAmount(order.getTotal());
+            payment.setPaymentMethod("paypal");
+            payment.setStatus("Chờ thanh toán");
+            
+            // Lưu payment
+            Payment savedPayment = paymentService.save(payment);
+
+            // Cập nhật trạng thái đơn hàng
+            order.setPaymentStatus("Chờ thanh toán");
+            // Set expired_at = now + 24h
+            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime expired = now.plusHours(24);
+            order.setExpiredAt(Date.from(expired.atZone(ZoneId.systemDefault()).toInstant()));
+            orderService.update(order);
+
+            // Tạo PayPal payment URL mới cho mobile
+            String paypalPaymentUrl = payPalService.createPaymentUrl(
+                id.longValue(),
+                order.getTotal().longValue(),
+                returnUrl,
+                cancelUrl
+            );
+
+            // Trả về response cho mobile
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Tạo URL thanh toán PayPal mới thành công",
+                "data", Map.of(
+                    "paymentUrl", paypalPaymentUrl,
+                    "orderId", id,
+                    "amount", order.getTotal(),
+                    "transactionCode", savedPayment.getTransactionCode(),
+                    "expiredAt", order.getExpiredAt()
+                )
+            ));
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of(
+                    "success", false,
+                    "message", "Lỗi xử lý thanh toán PayPal lại: " + e.getMessage(),
+                    "code", "INTERNAL_SERVER_ERROR"
+                ));
         }
     }
 }
