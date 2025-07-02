@@ -133,6 +133,9 @@ public class UserController {
         if (!passwordService.matches(password, user.getPassword())) {
             return ResponseEntity.badRequest().body("Mật khẩu không đúng");
         }
+        if (!user.isActive()) {
+            return ResponseEntity.badRequest().body("Tài khoản chưa được xác thực. Vui lòng kiểm tra email.");
+        }
 
         // Tạo response chứa thông tin user và role
         Map<String, Object> response = new HashMap<>();
@@ -162,7 +165,10 @@ public class UserController {
 
         // Tạo user mới với role mặc định là 2
         User savedUser = userService.createUserWithDefaultRole(user);
-
+        String subject = "Xác thực email";
+        String Text = "Click vào đường dẫn để xác thực";
+        String verificationLink = "http://localhost:8080/api/users/verify-email?token=" + savedUser.getVerificationToken();
+        emailService.sendOtpEmail(subject, Text,savedUser.getEmail(), "Bấm vào link để xác thực tài khoản: " + verificationLink);
         // Tạo response chứa thông tin user đã đăng ký
         Map<String, Object> response = new HashMap<>();
         response.put("id", savedUser.getId());
@@ -173,6 +179,19 @@ public class UserController {
 
         return ResponseEntity.ok(response);
     }
+    @GetMapping("/verify-email")
+    public ResponseEntity<?> verifyEmail(@RequestParam String token) {
+        User user = userService.findByVerificationToken(token);
+        if (user == null) {
+            return ResponseEntity.badRequest().body("Token không hợp lệ");
+        }
+
+        user.setActive(true);
+        user.setVerificationToken(null); // clear token
+        userService.update(user);
+
+        return ResponseEntity.ok("Tài khoản đã được xác thực thành công!");
+    }
     @PostMapping("/forgot-password")
     public ResponseEntity<?> forgotPassword(@RequestBody Map<String, String> request) {
         String email = request.get("email");
@@ -182,7 +201,9 @@ public class UserController {
         }
 
         String otp = otpService.generateOtp(email);
-        emailService.sendOtpEmail(email, otp);
+        String text = "Mã OTP của bạn là: " + otp + "\nMã này có hiệu lực trong 5 phút.";
+        String subject  = "Mã OTP khôi phục mật khẩu";
+        emailService.sendOtpEmail(subject, text,email, otp);
         return ResponseEntity.ok("OTP đã được gửi đến email của bạn");
     }
 

@@ -38,6 +38,21 @@ public class User {
     @ManyToOne
     @JoinColumn(name = "role_id")
     private Role role;
+    @Column(name = "is_active", nullable = false)
+    private boolean isActive = true;
+
+    @Column(name = "verification_token")
+    private String verificationToken;
+    @Column(name = "count_wheel", nullable = false)
+    private int countWheel;
+
+    public int getCountWheel() {
+        return countWheel;
+    }
+
+    public void setCountWheel(int countWheel) {
+        this.countWheel = countWheel;
+    }
 
     public Role getRole() {
         return role;
@@ -93,5 +108,18 @@ public class User {
     public void setPhone(String phone) {
         this.phone = phone;
     }
+    public boolean isActive() {
+        return isActive;
+    }
 
+    public void setActive(boolean active) {
+        this.isActive = active;
+    }
+    public String getVerificationToken() {
+        return verificationToken;
+    }
+
+    public void setVerificationToken(String verificationToken) {
+        this.verificationToken = verificationToken;
+    }
 }
