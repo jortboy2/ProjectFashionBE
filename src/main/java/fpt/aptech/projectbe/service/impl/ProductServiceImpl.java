@@ -53,4 +53,9 @@ public class ProductServiceImpl implements ProductService {
     public List<Product> findRelatedProducts(Integer categoryId, Integer productId) {
         return productRepository.findRelatedProducts(categoryId, productId);
     }
+
+    @Override
+    public List<Product> filterProducts(String category, java.math.BigDecimal minPrice, java.math.BigDecimal maxPrice, java.util.List<String> sizes) {
+        return productRepository.filterProducts(category, minPrice, maxPrice, sizes);
+    }
 }

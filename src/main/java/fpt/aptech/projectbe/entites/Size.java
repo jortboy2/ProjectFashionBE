@@ -1,6 +1,6 @@
 package fpt.aptech.projectbe.entites;
 
-import com.fasterxml.jackson.annotation.JsonManagedReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.util.List;
 
@@ -18,7 +18,7 @@ public class Size {
     @Column(name = "catesize", nullable = false, length = 100)
     private String catesize;
 
-    @JsonManagedReference
+    @JsonIgnore
     @OneToMany(mappedBy = "size", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<ProductSize> productSizes;
 

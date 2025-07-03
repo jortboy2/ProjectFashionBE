@@ -12,4 +12,5 @@ public interface ProductService {
     Product update(Product product);
     List<Product> findByCategoryId(Integer categoryId);
     List<Product> findRelatedProducts(Integer categoryId, Integer productId);
+    List<Product> filterProducts(String category, java.math.BigDecimal minPrice, java.math.BigDecimal maxPrice, java.util.List<String> sizes);
 } 
