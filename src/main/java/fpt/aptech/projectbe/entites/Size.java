@@ -15,6 +15,9 @@ public class Size {
     @Column(name = "name", nullable = false, length = 10, unique = true)
     private String name;
 
+    @Column(name = "catesize", nullable = false, length = 100)
+    private String catesize;
+
     @JsonManagedReference
     @OneToMany(mappedBy = "size", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<ProductSize> productSizes;
@@ -33,6 +36,14 @@ public class Size {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public String getCatesize() {
+        return catesize;
+    }
+
+    public void setCatesize(String catesize) {
+        this.catesize = catesize;
     }
 
     public List<ProductSize> getProductSizes() {
