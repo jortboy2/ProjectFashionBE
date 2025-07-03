@@ -12,7 +12,8 @@ public interface UserService {
     User update(User user);
     User findByUsername(String username);
     User findByEmail(String email);
-    
+    User findByVerificationToken(String token);
+
     // Thêm phương thức tạo user với role mặc định là 2
     User createUserWithDefaultRole(User user);
 } 

@@ -416,7 +416,11 @@ public class OrderController {
             // Chuyển đổi sang DTO
             OrderDTO orderDTO = orderMapper.toDTO(updatedOrder);
             PaymentDTO paymentDTO = paymentMapper.toDTO(savedPayment);
-            
+            if (updatedOrder.getTotal().compareTo(BigDecimal.valueOf(500000)) > 0) {
+                User user = order.getUser();
+                user.setCountWheel(user.getCountWheel() + 1);
+                userService.update(user);
+            }
             // Trả về thông tin đơn hàng đã cập nhật và payment mới
             return ResponseEntity.ok(Map.of(
                 "message", "Xác nhận đơn hàng thành công",

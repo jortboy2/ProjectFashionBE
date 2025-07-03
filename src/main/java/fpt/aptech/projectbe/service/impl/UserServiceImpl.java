@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 public class UserServiceImpl implements UserService {
@@ -66,8 +67,13 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(() -> new RuntimeException("Default role not found"));
 
         user.setRole(defaultRole);
+        user.setActive(false);
+        user.setVerificationToken(UUID.randomUUID().toString());
         return userRepository.save(user);
     }
-
+    @Override
+    public User findByVerificationToken(String token) {
+        return userRepository.findByVerificationToken(token);
+    }
 
 }
