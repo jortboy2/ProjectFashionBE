@@ -1,6 +1,6 @@
 package fpt.aptech.projectbe.entites;
 
-import com.fasterxml.jackson.annotation.JsonManagedReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.util.List;
 
@@ -15,7 +15,10 @@ public class Size {
     @Column(name = "name", nullable = false, length = 10, unique = true)
     private String name;
 
-    @JsonManagedReference
+    @Column(name = "catesize", nullable = false, length = 100)
+    private String catesize;
+
+    @JsonIgnore
     @OneToMany(mappedBy = "size", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<ProductSize> productSizes;
 
@@ -33,6 +36,14 @@ public class Size {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public String getCatesize() {
+        return catesize;
+    }
+
+    public void setCatesize(String catesize) {
+        this.catesize = catesize;
     }
 
     public List<ProductSize> getProductSizes() {

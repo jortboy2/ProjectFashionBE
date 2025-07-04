@@ -14,12 +14,14 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/products")
@@ -367,5 +369,25 @@ public class ProductController {
         } catch (IOException e) {
             return ResponseEntity.badRequest().body("Failed to delete product: " + e.getMessage());
         }
+    }
+
+    @GetMapping("/filter")
+    public ResponseEntity<List<Product>> filterProducts(
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) BigDecimal minPrice,
+            @RequestParam(required = false) BigDecimal maxPrice,
+            @RequestParam(required = false) List<String> sizes
+    ) {
+        List<Product> products = productService.filterProducts(category, minPrice, maxPrice, sizes);
+        // Load hình ảnh và category cho từng sản phẩm
+        for (Product product : products) {
+            List<ProductImage> images = productImageService.findByProduct(product);
+            product.setProductImages(images);
+            if (product.getCategory() != null) {
+                Category cat = categoryService.findById(product.getCategory().getId());
+                product.setCategory(cat);
+            }
+        }
+        return ResponseEntity.ok(products);
     }
 }
