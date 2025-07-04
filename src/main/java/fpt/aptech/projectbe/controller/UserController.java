@@ -69,8 +69,14 @@ public class UserController {
             existingUser.setRole(user.getRole());
         }
 
+        // ❌ Không set countWheel ở đây!
+        // => nên thêm dòng này:
+        existingUser.setCountWheel(user.getCountWheel());
+
         return ResponseEntity.ok(userService.update(existingUser));
     }
+
+
 
     @PostMapping("/change-password")
     public ResponseEntity<?> changePassword(@RequestBody Map<String, String> request) {
