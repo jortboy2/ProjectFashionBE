@@ -172,10 +172,13 @@ public class UserController {
         // Tạo user mới với role mặc định là 2
         User savedUser = userService.createUserWithDefaultRole(user);
         String subject = "Xác thực email";
-        String Text = "Click vào đường dẫn để xác thực";
         String verificationLink = "http://localhost:8080/api/users/verify-email?token=" + savedUser.getVerificationToken();
-        emailService.sendOtpEmail(subject, Text,savedUser.getEmail(), "Bấm vào link để xác thực tài khoản: " + verificationLink);
-        // Tạo response chứa thông tin user đã đăng ký
+        String emailContent = "Chào " + savedUser.getUsername() + ",\n\n"
+                + "Cảm ơn bạn đã đăng ký tài khoản.\n"
+                + "Vui lòng click vào link dưới đây để xác thực tài khoản của bạn:\n\n"
+                + verificationLink + "\n\n";
+
+        emailService.sendVerifiyEmail(subject, emailContent, savedUser.getEmail());
         Map<String, Object> response = new HashMap<>();
         response.put("id", savedUser.getId());
         response.put("username", savedUser.getUsername());
@@ -209,7 +212,7 @@ public class UserController {
         String otp = otpService.generateOtp(email);
         String text = "Mã OTP của bạn là: " + otp + "\nMã này có hiệu lực trong 5 phút.";
         String subject  = "Mã OTP khôi phục mật khẩu";
-        emailService.sendOtpEmail(subject, text,email, otp);
+        emailService.sendOtpEmail(subject, text,email);
         return ResponseEntity.ok("OTP đã được gửi đến email của bạn");
     }
 
